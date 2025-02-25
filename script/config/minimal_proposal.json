@@ -1,0 +1,15 @@
+{
+"name": "Minimal Test Proposal",
+"question": "Test Question?",
+"category": "governance",
+"lang": "en",
+"collateralToken1": "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d",
+"collateralToken2": "0x4ECaBa5870353805a9F068101A40E0f32ed605C6",
+"minBond": "1000000000000000000",
+"openingTime": 0,
+"liquidity": {
+"wxdaiAmount": "10000000000000000000",
+"token1Amount": "10000000000000000000",
+"token2Amount": "10000000000000000000"
+}
+} 

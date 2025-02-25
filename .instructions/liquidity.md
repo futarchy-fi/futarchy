@@ -12,7 +12,7 @@
 - [x] 1. Configuration System Setup
 - [x] 2. Contract Interface Integration
 - [x] 3. Price Oracle Implementation
-- [ ] 4. Proposal Creation
+- [x] 4. Proposal Creation
 - [ ] 5. Conditional Token Extraction
 - [ ] 6. Liquidity Calculation Engine
 - [ ] 7. v2 Pool Deployment
@@ -122,7 +122,7 @@
   - **Commands:**
     - Test price oracle: `./script/test_price_oracle.sh`
 
-### 4. Proposal Creation
+### 4. Proposal Creation [done]
 **Objective:** Deploy futarchy proposal through factory contract
 - **Requirements:**
   - Construct CreateProposalParams from configuration
@@ -131,6 +131,23 @@
   - Log proposal address and transaction details
 - **Expected Output:** Deployed proposal contract address
 - **Dependencies:** Configuration, interfaces, and signer from steps 1-2
+- **Implementation:**
+  - **Files:**
+    - `script/FutarchyProposalLiquidity.s.sol` - Main script with proposal creation logic
+    - `script/deploy_proposal_gnosis.sh` - Shell script wrapper for the Forge script
+  - **Key Components:**
+    - **createProposal Function:**
+      - Constructs proposal parameters from configuration
+      - Uses vm.startBroadcast with provided private key
+      - Calls factory.createProposal with appropriate parameters
+      - Handles errors with proper logging
+    - **JSON Configuration Handling:**
+      - Field-by-field parsing for robust error handling
+      - String to numeric conversion for amount fields
+      - Proper validation of all required parameters
+  - **Deployment Commands:**
+    - Single proposal: `./script/deploy_proposal_gnosis.sh script/config/proposal.json`
+    - Batch proposals: `./script/deploy_proposal_gnosis.sh script/config/batch_proposals.json -- --sig "runBatch(string)"`
 
 ### 5. Conditional Token Extraction
 **Objective:** Extract and validate all conditional tokens from proposal

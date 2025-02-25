@@ -3,6 +3,8 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
+import {IFutarchyFactory} from "../src/interfaces/IFutarchyFactory.sol";
+import {IERC20} from "../src/interfaces/IERC20Extended.sol";
 
 /**
  * @title FutarchyProposalLiquidity
@@ -52,39 +54,102 @@ contract FutarchyProposalLiquidity is Script {
      * @return config The parsed proposal configuration
      */
     function loadProposalConfig(string memory path) internal returns (ProposalConfig memory config) {
+        console.log("Loading proposal config from file: %s", path);
+        
         // Read the file content
         string memory jsonContent = vm.readFile(path);
         
-        // Parse the JSON
-        bytes memory parsedJson = vm.parseJson(jsonContent);
+        // Extract each field individually to avoid decoding issues
+        config.name = abi.decode(vm.parseJson(jsonContent, ".name"), (string));
+        config.question = abi.decode(vm.parseJson(jsonContent, ".question"), (string));
+        config.category = abi.decode(vm.parseJson(jsonContent, ".category"), (string));
+        config.lang = abi.decode(vm.parseJson(jsonContent, ".lang"), (string));
+        config.collateralToken1 = abi.decode(vm.parseJson(jsonContent, ".collateralToken1"), (address));
+        config.collateralToken2 = abi.decode(vm.parseJson(jsonContent, ".collateralToken2"), (address));
         
-        // Decode the JSON into our structure
-        config = abi.decode(parsedJson, (ProposalConfig));
+        // Handle numeric values with care - they might be strings in the JSON
+        string memory minBondStr = abi.decode(vm.parseJson(jsonContent, ".minBond"), (string));
+        config.minBond = vm.parseUint(minBondStr);
+        
+        // Opening time is a uint32
+        bytes memory openingTimeData = vm.parseJson(jsonContent, ".openingTime");
+        config.openingTime = uint32(abi.decode(openingTimeData, (uint256)));
+        
+        // Handle liquidity config
+        string memory wxdaiAmountStr = abi.decode(vm.parseJson(jsonContent, ".liquidity.wxdaiAmount"), (string));
+        string memory token1AmountStr = abi.decode(vm.parseJson(jsonContent, ".liquidity.token1Amount"), (string));
+        string memory token2AmountStr = abi.decode(vm.parseJson(jsonContent, ".liquidity.token2Amount"), (string));
+        
+        config.liquidity.wxdaiAmount = vm.parseUint(wxdaiAmountStr);
+        config.liquidity.token1Amount = vm.parseUint(token1AmountStr);
+        config.liquidity.token2Amount = vm.parseUint(token2AmountStr);
+        
+        // Log successful loading
+        console.log("Successfully loaded proposal config: %s", config.name);
+        console.log("Collateral Token 1: %s", addressToString(config.collateralToken1));
+        console.log("Collateral Token 2: %s", addressToString(config.collateralToken2));
         
         // Validate the configuration
         validateProposalConfig(config);
         
         return config;
     }
-
+    
     /**
      * @notice Loads and parses multiple proposal configurations from a JSON file
      * @param path The path to the JSON configuration file containing an array of proposals
      * @return configs Array of parsed proposal configurations
      */
     function loadBatchProposalConfigs(string memory path) internal returns (ProposalConfig[] memory configs) {
+        console.log("Loading batch proposal configs from file: %s", path);
+        
         // Read the file content
         string memory jsonContent = vm.readFile(path);
         
-        // Parse the JSON array
-        bytes memory parsedJson = vm.parseJson(jsonContent);
+        // Get array length from JSON
+        uint256 length = vm.parseJsonUint(jsonContent, ".length");
+        console.log("Number of proposals in batch: %d", length);
         
-        // Decode the JSON into our structure
-        configs = abi.decode(parsedJson, (ProposalConfig[]));
+        // Initialize array
+        configs = new ProposalConfig[](length);
         
-        // Validate each configuration
-        for (uint256 i = 0; i < configs.length; i++) {
-            validateProposalConfig(configs[i]);
+        // Load each proposal separately
+        for (uint256 i = 0; i < length; i++) {
+            string memory basePath = string(abi.encodePacked("[", vm.toString(i), "]"));
+            
+            // Extract proposal details field by field
+            ProposalConfig memory config;
+            
+            // Extract base fields
+            config.name = abi.decode(vm.parseJson(jsonContent, string(abi.encodePacked(basePath, ".name"))), (string));
+            config.question = abi.decode(vm.parseJson(jsonContent, string(abi.encodePacked(basePath, ".question"))), (string));
+            config.category = abi.decode(vm.parseJson(jsonContent, string(abi.encodePacked(basePath, ".category"))), (string));
+            config.lang = abi.decode(vm.parseJson(jsonContent, string(abi.encodePacked(basePath, ".lang"))), (string));
+            config.collateralToken1 = abi.decode(vm.parseJson(jsonContent, string(abi.encodePacked(basePath, ".collateralToken1"))), (address));
+            config.collateralToken2 = abi.decode(vm.parseJson(jsonContent, string(abi.encodePacked(basePath, ".collateralToken2"))), (address));
+            
+            // Handle numeric values with care
+            string memory minBondStr = abi.decode(vm.parseJson(jsonContent, string(abi.encodePacked(basePath, ".minBond"))), (string));
+            config.minBond = vm.parseUint(minBondStr);
+            
+            bytes memory openingTimeData = vm.parseJson(jsonContent, string(abi.encodePacked(basePath, ".openingTime")));
+            config.openingTime = uint32(abi.decode(openingTimeData, (uint256)));
+            
+            // Extract liquidity config
+            string memory liquidityBase = string(abi.encodePacked(basePath, ".liquidity"));
+            string memory wxdaiAmountStr = abi.decode(vm.parseJson(jsonContent, string(abi.encodePacked(liquidityBase, ".wxdaiAmount"))), (string));
+            string memory token1AmountStr = abi.decode(vm.parseJson(jsonContent, string(abi.encodePacked(liquidityBase, ".token1Amount"))), (string));
+            string memory token2AmountStr = abi.decode(vm.parseJson(jsonContent, string(abi.encodePacked(liquidityBase, ".token2Amount"))), (string));
+            
+            config.liquidity.wxdaiAmount = vm.parseUint(wxdaiAmountStr);
+            config.liquidity.token1Amount = vm.parseUint(token1AmountStr);
+            config.liquidity.token2Amount = vm.parseUint(token2AmountStr);
+            
+            // Validate and add to array
+            validateProposalConfig(config);
+            configs[i] = config;
+            
+            console.log("Loaded proposal %d: %s", i + 1, config.name);
         }
         
         return configs;
@@ -202,6 +267,54 @@ contract FutarchyProposalLiquidity is Script {
     }
 
     /**
+     * @notice Creates a futarchy proposal using the factory contract
+     * @param config The proposal configuration
+     * @param env The environment configuration
+     * @return proposalAddress The address of the created proposal
+     */
+    function createProposal(ProposalConfig memory config, EnvConfig memory env) internal returns (address proposalAddress) {
+        console.log("Creating proposal: %s", config.name);
+        
+        // Set up the factory contract interface
+        IFutarchyFactory factory = IFutarchyFactory(env.futarchyFactory);
+        
+        // Construct the proposal parameters from the configuration
+        IFutarchyFactory.CreateProposalParams memory params = IFutarchyFactory.CreateProposalParams({
+            marketName: config.name,
+            collateralToken1: IERC20(config.collateralToken1),
+            collateralToken2: IERC20(config.collateralToken2),
+            category: config.category,
+            lang: config.lang,
+            minBond: config.minBond,
+            openingTime: config.openingTime
+        });
+        
+        // Start the transaction
+        vm.startBroadcast(env.privateKey);
+        
+        // Create the proposal
+        try factory.createProposal(params) returns (address newProposalAddress) {
+            proposalAddress = newProposalAddress;
+            console.log("Proposal created successfully at address: %s", addressToString(proposalAddress));
+        } catch Error(string memory reason) {
+            console.log("Error creating proposal: %s", reason);
+            revert(reason);
+        } catch (bytes memory) {
+            string memory errorMessage = "Unknown error creating proposal";
+            console.log(errorMessage);
+            revert(errorMessage);
+        }
+        
+        // End the transaction
+        vm.stopBroadcast();
+        
+        // Validate the proposal address
+        require(proposalAddress != address(0), "Failed to create proposal");
+        
+        return proposalAddress;
+    }
+
+    /**
      * @notice Main entry point for the script with a single proposal
      * @param configPath Path to the proposal configuration JSON file
      */
@@ -209,18 +322,18 @@ contract FutarchyProposalLiquidity is Script {
         // Load configuration
         (proposalConfig, envConfig) = loadConfiguration(configPath);
         
-        // TODO: Implement the rest of the steps:
-        // 1. Contract interface integration
-        // 2. Price oracle implementation
-        // 3. Proposal creation
-        // 4. Conditional token extraction
-        // 5. Liquidity calculation
-        // 6. v2 pool deployment
-        // 7. v3 pool parameter calculation
-        // 8. v3 pool deployment
-        // 9. Validation and reporting
+        // Create the proposal
+        address proposalAddress = createProposal(proposalConfig, envConfig);
         
-        console.log("Configuration loaded successfully. Implementation of remaining steps pending.");
+        console.log("Proposal created at: %s", addressToString(proposalAddress));
+        
+        // TODO: Implement the rest of the steps:
+        // 1. Conditional token extraction
+        // 2. Liquidity calculation
+        // 3. v2 pool deployment
+        // 4. v3 pool parameter calculation
+        // 5. v3 pool deployment
+        // 6. Validation and reporting
     }
 
     /**
@@ -239,18 +352,17 @@ contract FutarchyProposalLiquidity is Script {
             proposalConfig = proposalConfigs[i];
             envConfig = loadedEnvConfig;
             
-            // TODO: Implement the rest of the steps for each proposal:
-            // 1. Contract interface integration
-            // 2. Price oracle implementation
-            // 3. Proposal creation
-            // 4. Conditional token extraction
-            // 5. Liquidity calculation
-            // 6. v2 pool deployment
-            // 7. v3 pool parameter calculation
-            // 8. v3 pool deployment
-            // 9. Validation and reporting
+            // Create the proposal
+            address proposalAddress = createProposal(proposalConfig, envConfig);
+            console.log("Proposal %d created at: %s", i + 1, addressToString(proposalAddress));
             
-            console.log("Proposal %d processed successfully.", i + 1);
+            // TODO: Implement the rest of the steps for each proposal:
+            // 1. Conditional token extraction
+            // 2. Liquidity calculation
+            // 3. v2 pool deployment
+            // 4. v3 pool parameter calculation
+            // 5. v3 pool deployment
+            // 6. Validation and reporting
         }
         
         console.log("Batch processing completed successfully.");
