@@ -8,6 +8,18 @@
 - Deploy SushiSwap v3 pools with concentrated liquidity for specific token pairs
 - Ensure all pools are initialized with market-appropriate prices
 
+## Tasks
+- [x] 1. Configuration System Setup
+- [x] 2. Contract Interface Integration
+- [x] 3. Price Oracle Implementation
+- [ ] 4. Proposal Creation
+- [ ] 5. Conditional Token Extraction
+- [ ] 6. Liquidity Calculation Engine
+- [ ] 7. v2 Pool Deployment
+- [ ] 8. v3 Pool Parameter Calculation
+- [ ] 9. v3 Pool Deployment
+- [ ] 10. Validation and Reporting
+
 ## Detailed Implementation Steps
 
 ### 1. Configuration System Setup [done]
@@ -42,7 +54,7 @@
     - Batch proposals: `forge script script/FutarchyProposalLiquidity.s.sol:FutarchyProposalLiquidity --sig "runBatch(string)" "script/config/batch_proposals.json" --rpc-url $RPC_URL --private-key $PRIVATE_KEY`
     - Test config parser: `./script/test_config_parser.sh`
 
-### 2. Contract Interface Integration
+### 2. Contract Interface Integration [done]
 **Objective:** Establish communication with all required smart contracts
 - **Requirements:**
   - Define interfaces for FutarchyFactory, FutarchyProposal, and FutarchyRouter
@@ -51,16 +63,64 @@
   - Implement connection logic with proper ABI handling
 - **Expected Output:** Functional contract interface instances
 - **Dependencies:** Configuration from step 1
+- **Implementation:**
+  - **Files:**
+    - `src/interfaces/IFutarchyFactory.sol` - Interface for creating futarchy proposals
+    - `src/interfaces/IFutarchyProposal.sol` - Interface for interacting with proposals
+    - `src/interfaces/IFutarchyRouter.sol` - Interface for managing proposal operations
+    - `src/interfaces/ISushiswapV2Factory.sol` - Interface for creating SushiSwap v2 pairs
+    - `src/interfaces/ISushiswapV2Pair.sol` - Interface for interacting with v2 pools
+    - `src/interfaces/ISushiswapV2Router.sol` - Interface for adding liquidity to v2 pools
+    - `src/interfaces/ISushiswapV3Factory.sol` - Interface for creating v3 pools
+    - `src/interfaces/ISushiswapV3Pool.sol` - Interface for interacting with v3 pools
+    - `src/interfaces/ISushiswapV3PositionManager.sol` - Interface for managing v3 positions
+  - **Key Functionalities:**
+    - **Futarchy Interfaces:**
+      - Proposal creation and management
+      - Conditional token extraction
+      - Outcome token mapping (YES/NO tokens)
+    - **SushiSwap v2 Interfaces:**
+      - Pair creation and initialization
+      - Liquidity provision
+      - Reserve querying
+    - **SushiSwap v3 Interfaces:**
+      - Concentrated liquidity pool creation
+      - Position management
+      - Price range configuration
+  - **Implementation Details:**
+    - All interfaces aligned with Solidity 0.8.20 compiler version
+    - Comprehensive function documentation with proper parameter descriptions
+    - Support for all required liquidity operations
+    - Clean separation of concerns between different protocol interactions
 
-### 3. Price Oracle Implementation
+### 3. Price Oracle Implementation [done]
 **Objective:** Create system to fetch and process current market prices
 - **Requirements:**
   - Query SushiSwap API for current spot prices of collateral tokens vs WXDAI
   - Calculate token1/token2 price ratio
-  - Implement fallback mechanisms for API failures
+  - Handle API response errors with clear messaging
   - Calculate appropriate prices for YES/NO tokens (half of collateral price)
 - **Expected Output:** Current price data for all relevant token pairs
 - **Dependencies:** Contract interfaces from step 2
+- **Implementation:**
+  - **Files:**
+    - `src/price-oracle/SushiswapPriceOracle.sol` - Library for interacting with SushiSwap API
+    - `src/price-oracle/PriceOracleService.sol` - Service contract for price fetching and processing
+    - `script/test_price_oracle.sh` - Test script for validating the price oracle
+  - **Key Components:**
+    - **SushiswapPriceOracle Library:**
+      - HTTP API integration using VM FFI capabilities
+      - Custom decimal string parsing
+      - Price fetching and conversion to standard format (18 decimals)
+    - **PriceOracleService Contract:**
+      - Fetching price data for proposal tokens
+      - Computing YES/NO token prices
+      - Formatting and logging price information
+  - **Data Structures:**
+    - `TokenPriceData` - Struct for token price information
+    - `ProposalPriceData` - Struct for complete proposal price data
+  - **Commands:**
+    - Test price oracle: `./script/test_price_oracle.sh`
 
 ### 4. Proposal Creation
 **Objective:** Deploy futarchy proposal through factory contract
