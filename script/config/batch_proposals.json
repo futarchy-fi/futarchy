@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Implementation of Feature X",
+    "question": "Should we implement Feature X in the next release?",
+    "category": "governance",
+    "lang": "en",
+    "collateralToken1": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+    "collateralToken2": "0x4ECaBa5870353805a9F068101A40E0f32ed605C6",
+    "minBond": "1000000000000000000",
+    "openingTime": 0,
+    "liquidity": {
+      "wxdaiAmount": "10000000000000000000",
+      "token1Amount": "10000000000000000000",
+      "token2Amount": "10000000000000000000"
+    }
+  },
+  {
+    "name": "Implementation of Feature Y",
+    "question": "Should we implement Feature Y in the next release?",
+    "category": "governance",
+    "lang": "en",
+    "collateralToken1": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+    "collateralToken2": "0x4ECaBa5870353805a9F068101A40E0f32ed605C6",
+    "minBond": "1000000000000000000",
+    "openingTime": 0,
+    "liquidity": {
+      "wxdaiAmount": "15000000000000000000",
+      "token1Amount": "15000000000000000000",
+      "token2Amount": "15000000000000000000"
+    }
+  }
+] 
