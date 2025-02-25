@@ -8,6 +8,18 @@
 - Deploy SushiSwap v3 pools with concentrated liquidity for specific token pairs
 - Ensure all pools are initialized with market-appropriate prices
 
+## Tasks
+- [x] 1. Configuration System Setup
+- [x] 2. Contract Interface Integration
+- [x] 3. Price Oracle Implementation
+- [ ] 4. Proposal Creation
+- [ ] 5. Conditional Token Extraction
+- [ ] 6. Liquidity Calculation Engine
+- [ ] 7. v2 Pool Deployment
+- [ ] 8. v3 Pool Parameter Calculation
+- [ ] 9. v3 Pool Deployment
+- [ ] 10. Validation and Reporting
+
 ## Detailed Implementation Steps
 
 ### 1. Configuration System Setup [done]
@@ -81,15 +93,34 @@
     - Support for all required liquidity operations
     - Clean separation of concerns between different protocol interactions
 
-### 3. Price Oracle Implementation
+### 3. Price Oracle Implementation [done]
 **Objective:** Create system to fetch and process current market prices
 - **Requirements:**
   - Query SushiSwap API for current spot prices of collateral tokens vs WXDAI
   - Calculate token1/token2 price ratio
-  - Implement fallback mechanisms for API failures
+  - Handle API response errors with clear messaging
   - Calculate appropriate prices for YES/NO tokens (half of collateral price)
 - **Expected Output:** Current price data for all relevant token pairs
 - **Dependencies:** Contract interfaces from step 2
+- **Implementation:**
+  - **Files:**
+    - `src/price-oracle/SushiswapPriceOracle.sol` - Library for interacting with SushiSwap API
+    - `src/price-oracle/PriceOracleService.sol` - Service contract for price fetching and processing
+    - `script/test_price_oracle.sh` - Test script for validating the price oracle
+  - **Key Components:**
+    - **SushiswapPriceOracle Library:**
+      - HTTP API integration using VM FFI capabilities
+      - Custom decimal string parsing
+      - Price fetching and conversion to standard format (18 decimals)
+    - **PriceOracleService Contract:**
+      - Fetching price data for proposal tokens
+      - Computing YES/NO token prices
+      - Formatting and logging price information
+  - **Data Structures:**
+    - `TokenPriceData` - Struct for token price information
+    - `ProposalPriceData` - Struct for complete proposal price data
+  - **Commands:**
+    - Test price oracle: `./script/test_price_oracle.sh`
 
 ### 4. Proposal Creation
 **Objective:** Deploy futarchy proposal through factory contract
