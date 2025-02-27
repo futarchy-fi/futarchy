@@ -13,7 +13,7 @@
 - [x] 2. Contract Interface Integration
 - [x] 3. Price Oracle Implementation
 - [x] 4. Proposal Creation
-- [ ] 5. Conditional Token Extraction
+- [x] 5. Conditional Token Extraction
 - [ ] 6. Liquidity Calculation Engine
 - [ ] 7. v2 Pool Deployment
 - [ ] 8. v3 Pool Parameter Calculation
@@ -149,7 +149,7 @@
     - Single proposal: `./script/deploy_proposal_gnosis.sh script/config/proposal.json`
     - Batch proposals: `./script/deploy_proposal_gnosis.sh script/config/batch_proposals.json -- --sig "runBatch(string)"`
 
-### 5. Conditional Token Extraction
+### 5. Conditional Token Extraction [done]
 **Objective:** Extract and validate all conditional tokens from proposal
 - **Requirements:**
   - Query FutarchyProposal for the four outcome tokens
@@ -158,6 +158,67 @@
   - Map tokens to their respective roles (YES/NO and token types)
 - **Expected Output:** Array of validated token addresses with metadata
 - **Dependencies:** Proposal address from step 4
+- **Implementation:**
+  - **Files:**
+    - `script/ExtractConditionalTokens.s.sol` - Main script for extracting and validating tokens
+    - `script/extract_tokens.sh` - Shell wrapper for the Forge script
+  - **Key Components:**
+    - **Token Extraction Logic:**
+      - Call `wrappedOutcome(uint256 index)` for all outcome indices
+      - Extract and validate token addresses
+      - Query token metadata (symbol, decimals)
+      - Map tokens to appropriate types (YES/NO for each collateral)
+    - **Output Format:**
+      - JSON output containing token data
+  - **Commands:**
+    - Extract tokens: `./script/extract_tokens.sh <proposal_address>`
+    - Save to file: `./script/extract_tokens.sh <proposal_address> --output tokens.json`
+  - **Implementation Notes:**
+    - Modified shell script to handle file output using redirection rather than Forge VM
+    - Added proper error handling and validation for token metadata
+    - Ensured compatibility with Gnosis Chain RPC endpoint
+  - **Example Run:**
+    - Command: `./script/extract_tokens.sh 0x6242AbA055957A63d682e9D3de3364ACB53D053A --output extracted_tokens.json`
+    - Extracted 4 tokens from proposal:
+      ```json
+      {
+        "proposalAddress": "0x6242AbA055957A63d682e9D3de3364ACB53D053A",
+        "tokens": [
+          {
+            "index": 0,
+            "address": "0x177304d505eCA60E1aE0dAF1bba4A4c4181dB8Ad",
+            "type": "token1Yes",
+            "symbol": "YES_GNO",
+            "decimals": 18,
+            "collateralToken": "0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb"
+          },
+          {
+            "index": 1,
+            "address": "0xf1B3E5Ffc0219A4F8C0ac69EC98C97709EdfB6c9",
+            "type": "token1No",
+            "symbol": "NO_GNO",
+            "decimals": 18,
+            "collateralToken": "0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb"
+          },
+          {
+            "index": 2,
+            "address": "0x493A0D1c776f8797297Aa8B34594fBd0A7F8968a",
+            "type": "token2Yes",
+            "symbol": "YES_sDAI",
+            "decimals": 18,
+            "collateralToken": "0xaf204776c7245bF4147c2612BF6e5972Ee483701"
+          },
+          {
+            "index": 3,
+            "address": "0xE1133Ef862f3441880adADC2096AB67c63f6E102",
+            "type": "token2No",
+            "symbol": "NO_sDAI",
+            "decimals": 18,
+            "collateralToken": "0xaf204776c7245bF4147c2612BF6e5972Ee483701"
+          }
+        ]
+      }
+      ```
 
 ### 6. Liquidity Calculation Engine
 **Objective:** Calculate optimal liquidity amounts based on current prices

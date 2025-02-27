@@ -1,0 +1,37 @@
+  {
+  "proposalAddress": "0x6242AbA055957A63d682e9D3de3364ACB53D053A",
+  "tokens": [
+    {
+      "index": 0,
+      "address": "0x177304d505eCA60E1aE0dAF1bba4A4c4181dB8Ad",
+      "type": "token1Yes",
+      "symbol": "YES_GNO",
+      "decimals": 18,
+      "collateralToken": "0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb"
+    },
+    {
+      "index": 1,
+      "address": "0xf1B3E5Ffc0219A4F8C0ac69EC98C97709EdfB6c9",
+      "type": "token1No",
+      "symbol": "NO_GNO",
+      "decimals": 18,
+      "collateralToken": "0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb"
+    },
+    {
+      "index": 2,
+      "address": "0x493A0D1c776f8797297Aa8B34594fBd0A7F8968a",
+      "type": "token2Yes",
+      "symbol": "YES_sDAI",
+      "decimals": 18,
+      "collateralToken": "0xaf204776c7245bF4147c2612BF6e5972Ee483701"
+    },
+    {
+      "index": 3,
+      "address": "0xE1133Ef862f3441880adADC2096AB67c63f6E102",
+      "type": "token2No",
+      "symbol": "NO_sDAI",
+      "decimals": 18,
+      "collateralToken": "0xaf204776c7245bF4147c2612BF6e5972Ee483701"
+    }
+  ]
+}

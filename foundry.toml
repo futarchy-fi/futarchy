@@ -10,6 +10,8 @@ remappings = [
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
     "@chainlink/contracts/=lib/chainlink/contracts/"
 ]
+ffi = true
+fs_permissions = [{ access = "read", path = "./script/config/" }]
 
 [fmt]
 line_length = 120
@@ -25,3 +27,5 @@ gnosis = "https://rpc.gnosischain.com"
 
 [etherscan]
 gnosis = { key = "${ETHERSCAN_KEY}", url = "https://api.gnosisscan.io/api" }
+
+# See more config options https://github.com/foundry-rs/foundry/tree/master/config
