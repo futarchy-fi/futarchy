@@ -5,6 +5,8 @@ import "forge-std/Script.sol";
 import "forge-std/console.sol";
 import {IFutarchyFactory} from "../src/interfaces/IFutarchyFactory.sol";
 import {IERC20} from "../src/interfaces/IERC20Extended.sol";
+import {PriceOracleService} from "../src/price-oracle/PriceOracleService.sol";
+import {LiquidityCalculationEngine} from "../src/liquidity/LiquidityCalculationEngine.sol";
 
 /**
  * @title FutarchyProposalLiquidity
@@ -327,9 +329,13 @@ contract FutarchyProposalLiquidity is Script {
         
         console.log("Proposal created at: %s", addressToString(proposalAddress));
         
+        // Step 1: Extract conditional tokens
+        LiquidityCalculationEngine.TokenData[] memory tokens = extractConditionalTokens(proposalAddress);
+        
+        // Step 2: Calculate liquidity
+        LiquidityCalculationEngine.PoolLiquidity[] memory poolLiquidity = calculateLiquidity(tokens, proposalConfig);
+        
         // TODO: Implement the rest of the steps:
-        // 1. Conditional token extraction
-        // 2. Liquidity calculation
         // 3. v2 pool deployment
         // 4. v3 pool parameter calculation
         // 5. v3 pool deployment
@@ -356,9 +362,13 @@ contract FutarchyProposalLiquidity is Script {
             address proposalAddress = createProposal(proposalConfig, envConfig);
             console.log("Proposal %d created at: %s", i + 1, addressToString(proposalAddress));
             
+            // Step 1: Extract conditional tokens
+            LiquidityCalculationEngine.TokenData[] memory tokens = extractConditionalTokens(proposalAddress);
+            
+            // Step 2: Calculate liquidity
+            LiquidityCalculationEngine.PoolLiquidity[] memory poolLiquidity = calculateLiquidity(tokens, proposalConfig);
+            
             // TODO: Implement the rest of the steps for each proposal:
-            // 1. Conditional token extraction
-            // 2. Liquidity calculation
             // 3. v2 pool deployment
             // 4. v3 pool parameter calculation
             // 5. v3 pool deployment
@@ -366,6 +376,179 @@ contract FutarchyProposalLiquidity is Script {
         }
         
         console.log("Batch processing completed successfully.");
+    }
+
+    /**
+     * @notice Extracts conditional tokens from a proposal
+     * @param proposalAddress The address of the proposal
+     * @return tokenData Array of token data
+     */
+    function extractConditionalTokens(address proposalAddress) internal returns (LiquidityCalculationEngine.TokenData[] memory) {
+        console.log("Extracting conditional tokens from proposal: %s", addressToString(proposalAddress));
+        
+        // For now, we'll execute the extract_tokens.sh script and read the output
+        string[] memory inputs = new string[](3);
+        inputs[0] = "bash";
+        inputs[1] = "./script/extract_tokens.sh";
+        inputs[2] = addressToString(proposalAddress);
+        
+        // Execute the script
+        vm.ffi(inputs);
+        
+        // Read the token data from the output file
+        string memory json = vm.readFile("extracted_tokens.json");
+        
+        // Parse the token data
+        LiquidityCalculationEngine.TokenData[] memory tokens = parseTokensFromJson(json);
+        
+        console.log("Extracted %d tokens from proposal", tokens.length);
+        return tokens;
+    }
+    
+    /**
+     * @notice Parse token data from extracted_tokens.json
+     * @param json The JSON content
+     * @return tokens Array of token data
+     */
+    function parseTokensFromJson(string memory json) internal returns (LiquidityCalculationEngine.TokenData[] memory) {
+        uint256 length = vm.parseJsonUint(json, ".tokens.length");
+        LiquidityCalculationEngine.TokenData[] memory tokens = new LiquidityCalculationEngine.TokenData[](length);
+        
+        for (uint256 i = 0; i < length; i++) {
+            string memory basePath = string.concat(".tokens[", vm.toString(i), "]");
+            
+            tokens[i] = LiquidityCalculationEngine.TokenData({
+                tokenAddress: vm.parseJsonAddress(json, string.concat(basePath, ".address")),
+                tokenType: vm.parseJsonString(json, string.concat(basePath, ".type")),
+                symbol: vm.parseJsonString(json, string.concat(basePath, ".symbol")),
+                decimals: uint8(vm.parseJsonUint(json, string.concat(basePath, ".decimals"))),
+                collateralToken: vm.parseJsonAddress(json, string.concat(basePath, ".collateralToken"))
+            });
+            
+            console.log("Loaded token: %s (%s)", tokens[i].symbol, vm.toString(tokens[i].tokenAddress));
+        }
+        
+        return tokens;
+    }
+    
+    /**
+     * @notice Calculates liquidity for all pools
+     * @param tokens Array of token data
+     * @param config Proposal configuration
+     * @return pools Array of pool liquidity data
+     */
+    function calculateLiquidity(
+        LiquidityCalculationEngine.TokenData[] memory tokens,
+        ProposalConfig memory config
+    ) internal returns (LiquidityCalculationEngine.PoolLiquidity[] memory) {
+        console.log("Calculating liquidity for all pools...");
+        
+        // Initialize the liquidity calculation engine
+        LiquidityCalculationEngine engine = new LiquidityCalculationEngine();
+        
+        // Initialize the price oracle service
+        PriceOracleService priceOracle = new PriceOracleService();
+        
+        // Find token addresses for price fetching
+        address token1Address;
+        address token2Address;
+        
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (keccak256(bytes(tokens[i].tokenType)) == keccak256(bytes("token1Yes"))) {
+                token1Address = tokens[i].collateralToken;
+            } else if (keccak256(bytes(tokens[i].tokenType)) == keccak256(bytes("token2Yes"))) {
+                token2Address = tokens[i].collateralToken;
+            }
+        }
+        
+        // Fetch price data for tokens
+        uint256 chainId = getChainId();
+        console.log("Fetching price data for collateral tokens on chain ID: %d", chainId);
+        
+        PriceOracleService.ProposalPriceData memory priceData =
+            priceOracle.fetchProposalPriceData(
+                chainId,
+                token1Address,
+                token2Address,
+                envConfig.wxdai
+            );
+        
+        // Create liquidity config from proposal config
+        LiquidityCalculationEngine.LiquidityConfig memory liquidityConfig = 
+            LiquidityCalculationEngine.LiquidityConfig({
+                wxdaiAmount: config.liquidity.wxdaiAmount,
+                token1Amount: config.liquidity.token1Amount,
+                token2Amount: config.liquidity.token2Amount
+            });
+        
+        // Calculate liquidity for all pools
+        LiquidityCalculationEngine.PoolLiquidity[] memory pools = 
+            engine.calculateAllPoolLiquidity(tokens, priceData, liquidityConfig);
+        
+        console.log("Liquidity calculation completed for %d pools", pools.length);
+        
+        // Save results to file for later use
+        savePoolLiquidityToJson(pools);
+        
+        return pools;
+    }
+    
+    /**
+     * @notice Saves pool liquidity data to a JSON file
+     * @param pools Array of pool liquidity data
+     */
+    function savePoolLiquidityToJson(LiquidityCalculationEngine.PoolLiquidity[] memory pools) internal {
+        console.log("Saving pool liquidity data to file...");
+        
+        string memory json = "{\"pools\":[";
+        
+        for (uint256 i = 0; i < pools.length; i++) {
+            // Start pool object
+            json = string.concat(json, "{");
+            
+            // Add pool properties
+            json = string.concat(json, "\"token0\":\"", vm.toString(pools[i].token0), "\",");
+            json = string.concat(json, "\"token1\":\"", vm.toString(pools[i].token1), "\",");
+            json = string.concat(json, "\"amount0\":\"", vm.toString(pools[i].amount0), "\",");
+            json = string.concat(json, "\"amount1\":\"", vm.toString(pools[i].amount1), "\",");
+            json = string.concat(json, "\"initialPrice\":\"", vm.toString(pools[i].initialPrice), "\",");
+            json = string.concat(json, "\"isV3\":", pools[i].isV3 ? "true" : "false");
+            
+            // Add v3-specific properties if applicable
+            if (pools[i].isV3) {
+                json = string.concat(json, ",");
+                json = string.concat(json, "\"tickLower\":", vm.toString(int256(pools[i].tickLower)), ",");
+                json = string.concat(json, "\"tickUpper\":", vm.toString(int256(pools[i].tickUpper)), ",");
+                json = string.concat(json, "\"fee\":", vm.toString(pools[i].fee));
+            }
+            
+            // Close pool object
+            json = string.concat(json, "}");
+            
+            // Add comma if not the last pool
+            if (i < pools.length - 1) {
+                json = string.concat(json, ",");
+            }
+        }
+        
+        // Close pools array and root object
+        json = string.concat(json, "]}");
+        
+        // Write to file
+        vm.writeFile("pool_liquidity.json", json);
+        console.log("Pool liquidity data saved to pool_liquidity.json");
+    }
+    
+    /**
+     * @notice Gets the current chain ID
+     * @return chainId The chain ID
+     */
+    function getChainId() internal view returns (uint256) {
+        uint256 chainId;
+        assembly {
+            chainId := chainid()
+        }
+        return chainId;
     }
 
     // Exposed functions for testing

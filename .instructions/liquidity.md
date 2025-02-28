@@ -14,7 +14,7 @@
 - [x] 3. Price Oracle Implementation
 - [x] 4. Proposal Creation
 - [x] 5. Conditional Token Extraction
-- [ ] 6. Liquidity Calculation Engine
+- [x] 6. Liquidity Calculation Engine
 - [ ] 7. v2 Pool Deployment
 - [ ] 8. v3 Pool Parameter Calculation
 - [ ] 9. v3 Pool Deployment
@@ -218,18 +218,55 @@
       }
       ```
 
-### 6. Liquidity Calculation Engine
+### 6. Liquidity Calculation Engine [done]
 **Objective:** Calculate optimal liquidity amounts and ratios for both v2 and v3 pools
 - **Requirements:**
-  - Use the **on-chain Balancer price** to derive the token ratios for each pool
+  - Use the **SushiSwap price oracle** to derive the token ratios for each pool
   - For v2 pools:
     - Calculate YES/WXDAI and NO/WXDAI pool liquidity based on the current collateral price (YES or NO ≈ half collateral price)
-    - Optionally create YES/YES and NO/NO pairs if part of your futarchy design
+    - Create YES/YES and NO/NO pairs for additional liquidity options
   - For v3 pools:
     - Set concentrated liquidity around ±20% (a 1.2x range) of the spot price to handle volatility and attract volume
   - Scale final liquidity amounts according to a predefined USD budget or user config
 - **Expected Output:** Complete liquidity parameters for all pools
 - **Dependencies:** Price data from step 3, token addresses from step 5
+- **Implementation:**
+  - **Files:**
+    - `src/liquidity/LiquidityCalculationEngine.sol` - Main contract for calculating optimal liquidity
+    - `script/test_liquidity_calculation.sh` - Test script for validating the engine
+  - **Key Components:**
+    - **Data Structures:**
+      - `TokenData` - Struct for token information (address, type, symbol, decimals, collateralToken)
+      - `PoolLiquidity` - Struct for pool configuration (tokens, amounts, initialPrice, isV3, tickLower, tickUpper, fee)
+      - `LiquidityConfig` - Struct for liquidity budget parameters (wxdaiAmount, token1Amount, token2Amount)
+      - `TokenPrices` - Struct for token price information
+    - **Main Functions:**
+      - `calculateAllPoolLiquidity()` - Orchestrates the liquidity calculation for all pools
+      - `calculateV2TokenWXDAIPools()` - Creates v2 pools for YES/WXDAI and NO/WXDAI pairs
+      - `calculateV2YesNoPools()` - Creates v2 pools for YES/YES and NO/NO pairs
+      - `calculateV3Pools()` - Creates v3 pools with concentrated liquidity
+      - `calculateTickRange()` - Determines tick bounds for v3 pools based on price
+      - `log2()` - Utility function to calculate logarithm base 2 for tick calculations
+      - `roundToNearestSpacing()` - Ensures ticks align with pool spacing requirements
+    - **Integration with Main Script:**
+      - Added `extractConditionalTokens()` function in `FutarchyProposalLiquidity.s.sol` to extract tokens from proposals
+      - Added `calculateLiquidity()` function to process token data and calculate liquidity parameters
+      - Added functions to save calculated pool configurations to JSON
+    - **Mathematical Formulas:**
+      - v2 pools: token amounts calculated as `tokenAmount = (wxdaiAmount * 1e18) / tokenPrice`
+      - v3 pools: price range set to ±20% (1.2x) around the spot price
+      - v3 ticks: calculated using logarithmic approximation: `tick ≈ log(price) / log(1.0001)`
+    - **Special Handling:**
+      - Added validation to ensure v3 ticks are properly ordered (lower < upper)
+      - Implemented fallback logic when tick calculation produces invalid ranges
+      - Proper scaling of token amounts based on decimals and pricing
+  - **Commands:**
+    - Test liquidity calculation: `./script/test_liquidity_calculation.sh`
+    - Run full integration: `source .env && forge script script/FutarchyProposalLiquidity.s.sol`
+  - **Outputs:**
+    - Creates 8 pools in total: 4 v2 token-WXDAI pools, 2 v2 YES/YES and NO/NO pools, and 2 v3 pools
+    - Saves calculated pool configurations to `pool_liquidity.json`
+    - Provides detailed logging of pool parameters for debugging
 
 ### 7. v2 Pool Deployment
 **Objective:** Create all required SushiSwap v2 pools
