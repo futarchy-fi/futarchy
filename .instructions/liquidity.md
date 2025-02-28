@@ -94,28 +94,26 @@
     - Clean separation of concerns between different protocol interactions
 
 ### 3. Price Oracle Implementation [done]
-**Objective:** Create system to fetch and process current market prices
+**Objective:** Fetch on-chain Balancer pool prices with minimal off-chain dependencies
 - **Requirements:**
-  - Query SushiSwap API for current spot prices of collateral tokens vs WXDAI
-  - Calculate token1/token2 price ratio
-  - Handle API response errors with clear messaging
-  - Calculate appropriate prices for YES/NO tokens (half of collateral price)
-- **Expected Output:** Current price data for all relevant token pairs
+  - **Use Balancer's on-chain vault/pools** to retrieve spot prices for collateral tokens (e.g., Balancer's `IVault`)
+  - Avoid reliance on off-chain APIs; this is an MVP, so no fallback mechanism needed
+  - Calculate resulting YES/NO token prices at half the collateral price (if relevant to your futarchy design)
+- **Expected Output:** Reliable, on-chain price data for all relevant token pairs
 - **Dependencies:** Contract interfaces from step 2
 - **Implementation:**
   - **Files:**
-    - `src/price-oracle/SushiswapPriceOracle.sol` - Library for interacting with SushiSwap API
+    - `src/price-oracle/BalancerPriceOracle.sol` - Library for interacting with Balancer pools
     - `src/price-oracle/PriceOracleService.sol` - Service contract for price fetching and processing
     - `script/test_price_oracle.sh` - Test script for validating the price oracle
   - **Key Components:**
-    - **SushiswapPriceOracle Library:**
-      - HTTP API integration using VM FFI capabilities
-      - Custom decimal string parsing
-      - Price fetching and conversion to standard format (18 decimals)
-    - **PriceOracleService Contract:**
-      - Fetching price data for proposal tokens
-      - Computing YES/NO token prices
-      - Formatting and logging price information
+    - **Query Balancer Vault:**
+      - Call `getPoolTokens(poolId)` to retrieve token balances
+      - If using weighted pools, factor in token weights to compute the spot price
+    - **Compute Spot Price:**
+      - `spotPrice = (balanceIn / weightIn) / (balanceOut / weightOut)` (conceptual formula, depends on pool type)
+    - **YES/NO Price Calculation:**
+      - Use half of the collateral token's Balancer-based price as an initial reference for YES and NO tokens
   - **Data Structures:**
     - `TokenPriceData` - Struct for token price information
     - `ProposalPriceData` - Struct for complete proposal price data
@@ -221,13 +219,15 @@
       ```
 
 ### 6. Liquidity Calculation Engine
-**Objective:** Calculate optimal liquidity amounts based on current prices
+**Objective:** Calculate optimal liquidity amounts and ratios for both v2 and v3 pools
 - **Requirements:**
-  - Use price data to determine token ratios for each pool
-  - Calculate v2 pool liquidity for YES/WXDAI and NO/WXDAI (at half collateral price)
-  - Calculate v2 pool liquidity for YES/YES and NO/NO pairs
-  - Determine v3 concentrated liquidity ranges (1.2x around current price)
-  - Scale liquidity amounts based on configuration
+  - Use the **on-chain Balancer price** to derive the token ratios for each pool
+  - For v2 pools:
+    - Calculate YES/WXDAI and NO/WXDAI pool liquidity based on the current collateral price (YES or NO ≈ half collateral price)
+    - Optionally create YES/YES and NO/NO pairs if part of your futarchy design
+  - For v3 pools:
+    - Set concentrated liquidity around ±20% (a 1.2x range) of the spot price to handle volatility and attract volume
+  - Scale final liquidity amounts according to a predefined USD budget or user config
 - **Expected Output:** Complete liquidity parameters for all pools
 - **Dependencies:** Price data from step 3, token addresses from step 5
 
@@ -243,21 +243,32 @@
 - **Dependencies:** Token addresses from step 5, liquidity calculations from step 6
 
 ### 8. v3 Pool Parameter Calculation
-**Objective:** Calculate technical parameters for v3 concentrated liquidity
+**Objective:** Convert price ratios into ticks, fee tiers, and initial pool parameters for v3
 - **Requirements:**
-  - Convert price ratios to tick ranges for v3 pools
-  - Calculate lower and upper ticks for 1.2x range around current price
-  - Determine optimal token amounts for concentrated liquidity
-  - Define fee tier settings (0.1%)
+  1. **Determine Tick Range**:
+     - Use ±20% price band (e.g., 1.2x) around the Balancer spot price
+     - Convert these bounds to Uniswap v3 ticks with `TickMath.getTickAtSqrtRatio()`
+  2. **Fee Tier**:
+     - Use 0.1% for attracting high trading volume and handling volatility
+  3. **Compute `sqrtPriceX96`**:
+     - For reference, `sqrtPriceX96 = \(\sqrt{\frac{\text{token1Price}}{\text{token0Price}}}\) * 2^{96}`
+     - Example (pseudo-code):
+       ```js
+       const priceRatio = priceToken1 / priceToken0;
+       const sqrtPrice = Math.sqrt(priceRatio);
+       const sqrtPriceX96 = sqrtPrice * (2 ** 96);
+       ```
+  4. **Optimal Token Amounts**:
+     - Based on your total liquidity budget and desired price range, calculate how many tokens are required for initial concentrated liquidity
 - **Expected Output:** Complete v3 pool initialization parameters
-- **Dependencies:** Price data from step 3, token pairs from step 5
+- **Dependencies:** Price data from step 3, liquidity calculations from step 6, token addresses from step 5
 
 ### 9. v3 Pool Deployment
 **Objective:** Create SushiSwap v3 pools with concentrated liquidity
 - **Requirements:**
   - Deploy v3 pools for token1yes/token2yes and token1no/token2no only
   - Use 0.1% fee tier
-  - Configure 1.2x price range around current market price
+  - Configure ±20% price range around current market price
   - Add calculated concentrated liquidity
   - Verify pool initialization and price range
 - **Expected Output:** Deployed v3 pool addresses with concentrated liquidity
