@@ -3,9 +3,9 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
-import {IFutarchyProposal} from "../src/interfaces/IFutarchyProposal.sol";
-import {IERC20} from "../src/interfaces/IERC20Extended.sol";
-import {IERC20Extended} from "../src/interfaces/IERC20Extended.sol";
+import {IFutarchyProposal} from "../../src/interfaces/IFutarchyProposal.sol";
+import {IERC20} from "../../src/interfaces/IERC20Extended.sol";
+import {IERC20Extended} from "../../src/interfaces/IERC20Extended.sol";
 
 /**
  * @title ExtractConditionalTokens

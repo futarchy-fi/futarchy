@@ -3,13 +3,13 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
-import {IFutarchyFactory} from "../src/interfaces/IFutarchyFactory.sol";
-import {IERC20} from "../src/interfaces/IERC20Extended.sol";
-import {IERC20Extended} from "../src/interfaces/IERC20Extended.sol";
-import {PriceOracleService} from "../src/price-oracle/PriceOracleService.sol";
-import {LiquidityCalculationEngine} from "../src/liquidity/LiquidityCalculationEngine.sol";
-import {V2PoolDeploymentEngine} from "../src/liquidity/V2PoolDeploymentEngine.sol";
-import {IFutarchyProposal} from "../src/interfaces/IFutarchyProposal.sol";
+import {IFutarchyFactory} from "../../src/interfaces/IFutarchyFactory.sol";
+import {IERC20} from "../../src/interfaces/IERC20Extended.sol";
+import {IERC20Extended} from "../../src/interfaces/IERC20Extended.sol";
+import {PriceOracleService} from "../../src/price-oracle/PriceOracleService.sol";
+import {LiquidityCalculationEngine} from "../../src/liquidity/LiquidityCalculationEngine.sol";
+import {V2PoolDeploymentEngine} from "../../src/liquidity/V2PoolDeploymentEngine.sol";
+import {IFutarchyProposal} from "../../src/interfaces/IFutarchyProposal.sol";
 
 /**
  * @title FutarchyProposalLiquidity

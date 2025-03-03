@@ -4,19 +4,19 @@ pragma solidity ^0.8.20;
 import "forge-std/Script.sol";
 
 // Core Futarchy
-import { FutarchyPoolManager } from "../src/FutarchyPoolManager.sol";
-import { GnosisCTFAdapter } from "../src/gnosis/GnosisCTFAdapter.sol";
-import { BalancerPoolWrapper } from "../src/pools/BalancerPoolWrapper.sol";
-import { FutarchyProposerGuard } from "../src/FAO/FutarchyProposerGuard.sol";
-import { FutarchyGovernor } from "../src/FAO/FutarchyGovernor.sol";
-import { FutarchyOracle } from "../src/FAO/FutarchyOracle.sol";
-import { FutarchyRandomFailure } from "../src/FAO/FutarchyRandomFailure.sol";
-import { ProposalNFT } from "../src/FAO/ProposalNFT.sol";
-import { ProposalManager } from "../src/FAO/ProposalManager.sol";
+import { FutarchyPoolManager } from "../../src/FutarchyPoolManager.sol";
+import { GnosisCTFAdapter } from "../../src/gnosis/GnosisCTFAdapter.sol";
+import { BalancerPoolWrapper } from "../../src/pools/BalancerPoolWrapper.sol";
+import { FutarchyProposerGuard } from "../../src/FAO/FutarchyProposerGuard.sol";
+import { FutarchyGovernor } from "../../src/FAO/FutarchyGovernor.sol";
+import { FutarchyOracle } from "../../src/FAO/FutarchyOracle.sol";
+import { FutarchyRandomFailure } from "../../src/FAO/FutarchyRandomFailure.sol";
+import { ProposalNFT } from "../../src/FAO/ProposalNFT.sol";
+import { ProposalManager } from "../../src/FAO/ProposalManager.sol";
 
 // Gnosis Conditional Tokens
-import { IConditionalTokens } from "../src/interfaces/IConditionalTokens.sol";
-import { IWrapped1155Factory } from "../src/interfaces/IWrapped1155Factory.sol";
+import { IConditionalTokens } from "../../src/interfaces/IConditionalTokens.sol";
+import { IWrapped1155Factory } from "../../src/interfaces/IWrapped1155Factory.sol";
 
 contract DeployFutarchy is Script {
     // Deployed contract addresses (for reference after script run)

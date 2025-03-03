@@ -3,8 +3,8 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
-import "../src/liquidity/LiquidityCalculationEngine.sol";
-import "../src/price-oracle/PriceOracleService.sol";
+import "../../src/liquidity/LiquidityCalculationEngine.sol";
+import "../../src/price-oracle/PriceOracleService.sol";
 
 /**
  * @title TestLiquidityCalculation

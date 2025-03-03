@@ -11,14 +11,14 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}Running Liquidity Calculation Engine Test...${NC}"
 
 # Create a temporary test contract file
-cat > script/TestLiquidityCalculation.s.sol << 'EOL'
+cat > script/test/TestLiquidityCalculation.s.sol << 'EOL'
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
-import "../src/liquidity/LiquidityCalculationEngine.sol";
-import "../src/price-oracle/PriceOracleService.sol";
+import "../../src/liquidity/LiquidityCalculationEngine.sol";
+import "../../src/price-oracle/PriceOracleService.sol";
 
 /**
  * @title TestLiquidityCalculation
@@ -224,7 +224,7 @@ if [ -z "$CHAIN_ID" ]; then
   export CHAIN_ID=100
 fi
 
-output=$(forge script script/TestLiquidityCalculation.s.sol:TestLiquidityCalculation -vvv --rpc-url $GNOSIS_RPC_URL 2>&1)
+output=$(forge script script/test/TestLiquidityCalculation.s.sol:TestLiquidityCalculation -vvv --rpc-url $GNOSIS_RPC_URL 2>&1)
 
 # Check the result
 if [[ $output == *"Liquidity Calculation Test Completed Successfully!"* ]]; then

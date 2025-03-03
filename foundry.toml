@@ -11,7 +11,14 @@ remappings = [
     "@chainlink/contracts/=lib/chainlink/contracts/"
 ]
 ffi = true
-fs_permissions = [{ access = "read", path = "./script/config/" }]
+fs_permissions = [
+    { access = "read", path = "./script/config/" },
+    { access = "read", path = "./script/proposal/" },
+    { access = "read", path = "./script/deploy/" },
+    { access = "read", path = "./script/utils/" },
+    { access = "read", path = "./script/test/" },
+    { access = "read-write", path = "./" }
+]
 
 [fmt]
 line_length = 120

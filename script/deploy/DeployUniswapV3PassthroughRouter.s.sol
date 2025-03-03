@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
-import "../src/UniswapV3PassthroughRouter.sol";
+import "../../src/UniswapV3PassthroughRouter.sol";
 
 contract DeployUniswapV3PassthroughRouter is Script {
     function run() external {
