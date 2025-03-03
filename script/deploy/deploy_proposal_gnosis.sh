@@ -31,13 +31,23 @@ echo "Using RPC URL: $RPC_URL"
 echo "Using Futarchy Factory: $FUTARCHY_FACTORY"
 
 # Run the script
-forge script script/FutarchyProposalLiquidity.s.sol:FutarchyProposalLiquidity \
-    --sig "run(string)" "$CONFIG_PATH" \
-    --rpc-url "$RPC_URL" \
-    --private-key "$PRIVATE_KEY" \
-    --broadcast \
-    --verify \
-    --ffi \
-    -vvv
+echo "Running forge script with config: $CONFIG_PATH"
+echo "Command: forge script script/proposal/FutarchyProposalLiquidity.s.sol:FutarchyProposalLiquidity \
+  --sig \"run(string)\" \"$CONFIG_PATH\" \
+  --rpc-url $RPC_URL \
+  --private-key $PRIVATE_KEY \
+  --broadcast \
+  --verify \
+  --ffi \
+  -vvv"
+
+forge script script/proposal/FutarchyProposalLiquidity.s.sol:FutarchyProposalLiquidity \
+  --sig "run(string)" "$CONFIG_PATH" \
+  --rpc-url $RPC_URL \
+  --private-key $PRIVATE_KEY \
+  --broadcast \
+  --verify \
+  --ffi \
+  -vvv
 
 echo "Deployment completed!" 

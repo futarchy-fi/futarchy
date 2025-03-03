@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "../script/FutarchyProposalLiquidity.s.sol";
+import "../script/proposal/FutarchyProposalLiquidity.s.sol";
 
 /**
  * @title ConfigParserTest

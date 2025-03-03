@@ -60,31 +60,28 @@ RPC_URL=${RPC_URL:-http://localhost:8545}
 echo -e "${GREEN}Extracting conditional tokens from proposal: ${PROPOSAL_ADDRESS}${NC}"
 echo -e "${YELLOW}Using RPC URL: ${RPC_URL}${NC}"
 
-# Run the Forge script
-if [[ -z "$OUTPUT_FILE" ]]; then
-  # Run without output file
-  forge script script/ExtractConditionalTokens.s.sol:ExtractConditionalTokens \
-    --sig "run(address)" "${PROPOSAL_ADDRESS}" \
-    --rpc-url "${RPC_URL}" \
-    -vv
+# Main execution
+if [[ "$OUTPUT_FILE" == "" ]]; then
+    # Just print to stdout
+    forge script script/utils/ExtractConditionalTokens.s.sol:ExtractConditionalTokens \
+        --sig "extractTokens(address)" "$PROPOSAL_ADDRESS" \
+        --rpc-url "$RPC_URL" \
+        $VERBOSE_ARG
 else
-  # Run with output file
-  echo -e "${YELLOW}Will save output to: ${OUTPUT_FILE}${NC}"
-  
-  # Run the script and capture the JSON output
-  OUTPUT=$(forge script script/ExtractConditionalTokens.s.sol:ExtractConditionalTokens \
-    --sig "run(address)" "${PROPOSAL_ADDRESS}" \
-    --rpc-url "${RPC_URL}" \
-    -vv | grep -A 50 "JSON Output:" | grep -v "JSON Output:" | grep -v "^$")
-  
-  if [ $? -eq 0 ]; then
-    # Save the output to the specified file
-    echo "$OUTPUT" > "${OUTPUT_FILE}"
-    echo -e "${GREEN}Output saved to ${OUTPUT_FILE}${NC}"
-  else
-    echo -e "${RED}Error: Failed to extract tokens${NC}"
-    exit 1
-  fi
+    # Save to file
+    OUTPUT=$(forge script script/utils/ExtractConditionalTokens.s.sol:ExtractConditionalTokens \
+        --sig "extractTokens(address)" "$PROPOSAL_ADDRESS" \
+        --rpc-url "$RPC_URL" \
+        $VERBOSE_ARG)
+    
+    if [ $? -eq 0 ]; then
+        # Save the output to the specified file
+        echo "$OUTPUT" > "${OUTPUT_FILE}"
+        echo -e "${GREEN}Output saved to ${OUTPUT_FILE}${NC}"
+    else
+        echo -e "${RED}Error: Failed to extract tokens${NC}"
+        exit 1
+    fi
 fi
 
 echo -e "${GREEN}Token extraction completed!${NC}" 

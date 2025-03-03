@@ -40,7 +40,7 @@ The UniswapV3PassthroughRouter is a stateless contract that:
 
 2. Deploy to Gnosis Chain:
    ```
-   forge script script/DeployUniswapV3PassthroughRouter.s.sol:DeployUniswapV3PassthroughRouter --rpc-url gnosis --broadcast --verify
+   forge script script/deploy/DeployUniswapV3PassthroughRouter.s.sol:DeployUniswapV3PassthroughRouter --rpc-url gnosis --broadcast --verify
    ```
 
 3. Verify the contract (if verification didn't work in the previous step):

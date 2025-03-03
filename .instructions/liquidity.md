@@ -33,7 +33,7 @@
 - **Dependencies:** None
 - **Implementation:**
   - **Files:**
-    - `script/FutarchyProposalLiquidity.s.sol` - Main script with configuration parsing logic
+    - `script/proposal/FutarchyProposalLiquidity.s.sol` - Main script with configuration parsing logic
     - `script/config/proposal.json` - Example single proposal configuration
     - `script/config/batch_proposals.json` - Example batch proposal configuration
     - `script/config/.env.example` - Template for environment variables
@@ -50,8 +50,8 @@
     - `validateProposalConfig()` - Validates proposal configuration
     - `validateEnvConfig()` - Validates environment configuration
   - **Commands:**
-    - Single proposal: `forge script script/FutarchyProposalLiquidity.s.sol:FutarchyProposalLiquidity --sig "run(string)" "script/config/proposal.json" --rpc-url $RPC_URL --private-key $PRIVATE_KEY`
-    - Batch proposals: `forge script script/FutarchyProposalLiquidity.s.sol:FutarchyProposalLiquidity --sig "runBatch(string)" "script/config/batch_proposals.json" --rpc-url $RPC_URL --private-key $PRIVATE_KEY`
+    - Single proposal: `forge script script/proposal/FutarchyProposalLiquidity.s.sol:FutarchyProposalLiquidity --sig "run(string)" "script/config/proposal.json" --rpc-url $RPC_URL --private-key $PRIVATE_KEY`
+    - Batch proposals: `forge script script/proposal/FutarchyProposalLiquidity.s.sol:FutarchyProposalLiquidity --sig "runBatch(string)" "script/config/batch_proposals.json" --rpc-url $RPC_URL --private-key $PRIVATE_KEY`
     - Test config parser: `./script/test_config_parser.sh`
 
 ### 2. Contract Interface Integration [done]
@@ -131,8 +131,8 @@
 - **Dependencies:** Configuration, interfaces, and signer from steps 1-2
 - **Implementation:**
   - **Files:**
-    - `script/FutarchyProposalLiquidity.s.sol` - Main script with proposal creation logic
-    - `script/deploy_proposal_gnosis.sh` - Shell script wrapper for the Forge script
+    - `script/proposal/FutarchyProposalLiquidity.s.sol` - Main script with proposal creation logic
+    - `script/deploy/deploy_proposal_gnosis.sh` - Shell script wrapper for the Forge script
   - **Key Components:**
     - **createProposal Function:**
       - Constructs proposal parameters from configuration
@@ -144,8 +144,8 @@
       - String to numeric conversion for amount fields
       - Proper validation of all required parameters
   - **Deployment Commands:**
-    - Single proposal: `./script/deploy_proposal_gnosis.sh script/config/proposal.json`
-    - Batch proposals: `./script/deploy_proposal_gnosis.sh script/config/batch_proposals.json -- --sig "runBatch(string)"`
+    - Single proposal: `./script/deploy/deploy_proposal_gnosis.sh script/config/proposal.json`
+    - Batch proposals: `./script/deploy/deploy_proposal_gnosis.sh script/config/batch_proposals.json -- --sig "runBatch(string)"`
 
 ### 5. Conditional Token Extraction [done]
 **Objective:** Extract and validate all conditional tokens from proposal
@@ -158,8 +158,8 @@
 - **Dependencies:** Proposal address from step 4
 - **Implementation:**
   - **Files:**
-    - `script/ExtractConditionalTokens.s.sol` - Main script for extracting and validating tokens
-    - `script/extract_tokens.sh` - Shell wrapper for the Forge script
+    - `script/utils/ExtractConditionalTokens.s.sol` - Main script for extracting and validating tokens
+    - `script/utils/extract_tokens.sh` - Shell wrapper for the Forge script
   - **Key Components:**
     - **Token Extraction Logic:**
       - Call `wrappedOutcome(uint256 index)` for all outcome indices
@@ -169,14 +169,14 @@
     - **Output Format:**
       - JSON output containing token data
   - **Commands:**
-    - Extract tokens: `./script/extract_tokens.sh <proposal_address>`
-    - Save to file: `./script/extract_tokens.sh <proposal_address> --output tokens.json`
+    - Extract tokens: `./script/utils/extract_tokens.sh <proposal_address>`
+    - Save to file: `./script/utils/extract_tokens.sh <proposal_address> --output tokens.json`
   - **Implementation Notes:**
     - Modified shell script to handle file output using redirection rather than Forge VM
     - Added proper error handling and validation for token metadata
     - Ensured compatibility with Gnosis Chain RPC endpoint
   - **Example Run:**
-    - Command: `./script/extract_tokens.sh 0x6242AbA055957A63d682e9D3de3364ACB53D053A --output extracted_tokens.json`
+    - Command: `./script/utils/extract_tokens.sh 0x6242AbA055957A63d682e9D3de3364ACB53D053A --output extracted_tokens.json`
     - Extracted 4 tokens from proposal:
       ```json
       {
@@ -262,7 +262,7 @@
       - Proper scaling of token amounts based on decimals and pricing
   - **Commands:**
     - Test liquidity calculation: `./script/test_liquidity_calculation.sh`
-    - Run full integration: `source .env && forge script script/FutarchyProposalLiquidity.s.sol`
+    - Run full integration: `source .env && forge script script/proposal/FutarchyProposalLiquidity.s.sol`
   - **Outputs:**
     - Creates 8 pools in total: 4 v2 token-WXDAI pools, 2 v2 YES/YES and NO/NO pools, and 2 v3 pools
     - Saves calculated pool configurations to `pool_liquidity.json`
@@ -281,7 +281,7 @@
 - **Implementation:**
   - **Files:**
     - `src/deployment/V2PoolDeploymentEngine.sol` - Contract for deploying SushiSwap v2 pools
-    - `script/FutarchyProposalLiquidity.s.sol` - Main script with v2 pool deployment logic
+    - `script/proposal/FutarchyProposalLiquidity.s.sol` - Main script with v2 pool deployment logic
   - **Key Components:**
     - **Data Structures:**
       - Reused `PoolLiquidity` struct from Liquidity Calculation Engine
@@ -359,3 +359,31 @@
   - Implement cleanup for any partial failures
 - **Expected Output:** Validation results and complete deployment report
 - **Dependencies:** All previous steps
+
+## Script Directory Organization
+
+To improve organization, the script directory has been structured as follows:
+
+### Directory Structure
+- `script/` - Root script directory
+  - `config/` - Configuration files for proposals and deployments
+  - `proposal/` - Scripts related to proposal creation and liquidity provision
+    - `FutarchyProposalLiquidity.s.sol` - Main script for proposal creation and liquidity
+  - `deploy/` - Deployment scripts for contracts and proposals
+    - `DeployFutarchy.s.sol` - Futarchy contracts deployment
+    - `DeployUniswapV3PassthroughRouter.s.sol` - Router deployment
+    - `deploy_proposal_gnosis.sh` - Shell script for deploying to Gnosis Chain
+  - `utils/` - Utility scripts and helpers
+    - `ExtractConditionalTokens.s.sol` - Script for extracting token data
+    - `extract_tokens.sh` - Shell wrapper for token extraction
+  - `test/` - Test scripts for validating components
+    - `TestLiquidityCalculation.s.sol` - Script for testing liquidity calculations
+    - Various test shell scripts for components
+
+### Usage
+All commands in this document have been updated to reference scripts in their new locations. When running scripts, be sure to use the correct paths:
+
+- Proposal creation: `forge script script/proposal/FutarchyProposalLiquidity.s.sol`
+- Token extraction: `./script/utils/extract_tokens.sh <proposal_address>`
+- Deployment: `./script/deploy/deploy_proposal_gnosis.sh script/config/proposal.json`
+- Tests: `./script/test/test_liquidity_calculation.sh`

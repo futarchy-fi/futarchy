@@ -78,7 +78,7 @@ When a swap is executed, the router's callback:
 
 2. Deploy to Gnosis Chain:
    ```
-   forge script script/DeployUniswapV3PassthroughRouter.s.sol:DeployUniswapV3PassthroughRouter --rpc-url gnosis --broadcast --verify
+   forge script script/deploy/DeployUniswapV3PassthroughRouter.s.sol:DeployUniswapV3PassthroughRouter --rpc-url gnosis --broadcast --verify
    ```
 
 3. If verification fails, you can manually verify the contract:

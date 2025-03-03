@@ -101,7 +101,7 @@ WXDAI_ADDRESS=0xe91d153e0b41518a2ce8dd3d7944fa863463a97d
 To run the script with a single proposal configuration:
 
 ```bash
-forge script script/FutarchyProposalLiquidity.s.sol:FutarchyProposalLiquidity --sig "run(string)" "script/config/proposal.json" --rpc-url $RPC_URL --private-key $PRIVATE_KEY
+forge script script/proposal/FutarchyProposalLiquidity.s.sol:FutarchyProposalLiquidity --sig "run(string)" "script/config/proposal.json" --rpc-url $RPC_URL --private-key $PRIVATE_KEY
 ```
 
 ### Batch Processing
@@ -109,20 +109,5 @@ forge script script/FutarchyProposalLiquidity.s.sol:FutarchyProposalLiquidity --
 To run the script with multiple proposals in batch mode:
 
 ```bash
-forge script script/FutarchyProposalLiquidity.s.sol:FutarchyProposalLiquidity --sig "runBatch(string)" "script/config/batch_proposals.json" --rpc-url $RPC_URL --private-key $PRIVATE_KEY
+forge script script/proposal/FutarchyProposalLiquidity.s.sol:FutarchyProposalLiquidity --sig "runBatch(string)" "script/config/batch_proposals.json" --rpc-url $RPC_URL --private-key $PRIVATE_KEY
 ```
-
-## Configuration Validation
-
-The script performs validation on both the proposal configuration and environment variables:
-
-### Proposal Configuration Validation
-- Name, question, category, and language must not be empty
-- Collateral token addresses must be valid and different from each other
-- Minimum bond must be greater than zero
-- Liquidity amounts must be greater than zero
-
-### Environment Configuration Validation
-- All contract addresses must be valid
-- Private key must be provided
-- RPC URL must be provided 
