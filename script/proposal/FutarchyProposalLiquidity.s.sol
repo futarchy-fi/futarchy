@@ -9,6 +9,7 @@ import {IERC20Extended} from "../../src/interfaces/IERC20Extended.sol";
 import {PriceOracleService} from "../../src/price-oracle/PriceOracleService.sol";
 import {LiquidityCalculationEngine} from "../../src/liquidity/LiquidityCalculationEngine.sol";
 import {V2PoolDeploymentEngine} from "../../src/liquidity/V2PoolDeploymentEngine.sol";
+import {V3PoolDeploymentEngine} from "../../src/liquidity/V3PoolDeploymentEngine.sol";
 import {IFutarchyProposal} from "../../src/interfaces/IFutarchyProposal.sol";
 
 /**
@@ -43,7 +44,7 @@ contract FutarchyProposalLiquidity is Script {
         address sushiV2Factory;     // SushiSwap V2 factory address
         address sushiV2Router;      // SushiSwap V2 router address
         address sushiV3Factory;     // SushiSwap V3 factory address
-        address sushiV3Router;      // SushiSwap V3 router address
+        address sushiV3PositionManager; // SushiSwap V3 position manager address
         address wxdai;              // WXDAI token address
         uint256 privateKey;         // Private key for transactions
         string rpcUrl;              // RPC URL for Gnosis Chain
@@ -52,6 +53,19 @@ contract FutarchyProposalLiquidity is Script {
     // Main script variables
     ProposalConfig public proposalConfig;
     EnvConfig public envConfig;
+
+    // Structure for deployed pools report
+    struct PoolDeploymentReport {
+        address proposalAddress;    // Proposal address
+        address[] v2Pools;          // V2 pool addresses
+        V3PoolInfo[] v3Pools;       // V3 pool information
+    }
+
+    // Structure for V3 pool info
+    struct V3PoolInfo {
+        address poolAddress;        // V3 pool address
+        uint256 tokenId;            // NFT position ID
+    }
 
     /**
      * @notice Loads and parses the proposal configuration from a JSON file
@@ -187,7 +201,7 @@ contract FutarchyProposalLiquidity is Script {
         config.sushiV2Factory = vm.envAddress("SUSHI_V2_FACTORY");
         config.sushiV2Router = vm.envAddress("SUSHI_V2_ROUTER");
         config.sushiV3Factory = vm.envAddress("SUSHI_V3_FACTORY");
-        config.sushiV3Router = vm.envAddress("SUSHI_V3_ROUTER");
+        config.sushiV3PositionManager = vm.envAddress("SUSHI_V3_POSITION_MANAGER");
         config.wxdai = vm.envAddress("WXDAI_ADDRESS");
         config.privateKey = vm.envUint("PRIVATE_KEY");
         config.rpcUrl = vm.envString("RPC_URL");
@@ -207,7 +221,7 @@ contract FutarchyProposalLiquidity is Script {
         require(config.sushiV2Factory != address(0), "SushiSwap V2 Factory address cannot be zero");
         require(config.sushiV2Router != address(0), "SushiSwap V2 Router address cannot be zero");
         require(config.sushiV3Factory != address(0), "SushiSwap V3 Factory address cannot be zero");
-        require(config.sushiV3Router != address(0), "SushiSwap V3 Router address cannot be zero");
+        require(config.sushiV3PositionManager != address(0), "SushiSwap V3 Position Manager address cannot be zero");
         require(config.wxdai != address(0), "WXDAI address cannot be zero");
         require(config.privateKey != 0, "Private key cannot be zero");
         require(bytes(config.rpcUrl).length > 0, "RPC URL cannot be empty");
@@ -339,12 +353,15 @@ contract FutarchyProposalLiquidity is Script {
         LiquidityCalculationEngine.PoolLiquidity[] memory poolLiquidity = calculateLiquidity(tokens, proposalConfig);
         
         // Step 3: Deploy V2 pools
-        deployV2Pools(poolLiquidity);
+        address[] memory v2Pools = deployV2Pools(poolLiquidity);
         
-        // TODO: Implement the rest of the steps:
-        // 4. v3 pool parameter calculation
-        // 5. v3 pool deployment
-        // 6. Validation and reporting
+        // Step 4: Deploy V3 pools
+        (address[] memory v3PoolAddresses, uint256[] memory v3TokenIds) = deployV3Pools(poolLiquidity);
+        
+        // Step 5: Save deployment report
+        savePoolDeploymentReport(proposalAddress, v2Pools, v3PoolAddresses, v3TokenIds);
+        
+        console.log("Futarchy proposal creation and liquidity deployment completed successfully.");
     }
 
     /**
@@ -374,12 +391,15 @@ contract FutarchyProposalLiquidity is Script {
             LiquidityCalculationEngine.PoolLiquidity[] memory poolLiquidity = calculateLiquidity(tokens, proposalConfig);
             
             // Step 3: Deploy V2 pools
-            deployV2Pools(poolLiquidity);
+            address[] memory v2Pools = deployV2Pools(poolLiquidity);
             
-            // TODO: Implement the rest of the steps for each proposal:
-            // 4. v3 pool parameter calculation
-            // 5. v3 pool deployment
-            // 6. Validation and reporting
+            // Step 4: Deploy V3 pools
+            (address[] memory v3PoolAddresses, uint256[] memory v3TokenIds) = deployV3Pools(poolLiquidity);
+            
+            // Step 5: Save deployment report
+            savePoolDeploymentReport(proposalAddress, v2Pools, v3PoolAddresses, v3TokenIds);
+            
+            console.log("Completed processing proposal %d", i + 1);
         }
         
         console.log("Batch processing completed successfully.");
@@ -617,7 +637,141 @@ contract FutarchyProposalLiquidity is Script {
         // Stop broadcasting transactions
         vm.stopBroadcast();
         
-        // Don't save results to file, just return the pair addresses
         return pairAddresses;
+    }
+
+    /**
+     * @notice Deploys SushiSwap V3 pools with concentrated liquidity
+     * @param pools Array of pool liquidity data
+     * @return poolAddresses Array of deployed pool addresses
+     * @return tokenIds Array of NFT token IDs for the positions
+     */
+    function deployV3Pools(
+        LiquidityCalculationEngine.PoolLiquidity[] memory pools
+    ) internal returns (address[] memory poolAddresses, uint256[] memory tokenIds) {
+        console.log("Deploying V3 pools...");
+        
+        // Initialize the V3 pool deployment engine
+        V3PoolDeploymentEngine deploymentEngine = new V3PoolDeploymentEngine(
+            envConfig.sushiV3Factory,
+            envConfig.sushiV3PositionManager
+        );
+        
+        // Start broadcasting transactions
+        vm.startBroadcast(envConfig.privateKey);
+        
+        // Deploy V3 pools
+        (poolAddresses, tokenIds) = deploymentEngine.deployV3Pools(pools);
+        
+        // Stop broadcasting transactions
+        vm.stopBroadcast();
+        
+        console.log("Successfully deployed %d V3 pools", poolAddresses.length);
+        
+        return (poolAddresses, tokenIds);
+    }
+
+    /**
+     * @notice Saves the pool deployment report
+     * @param proposalAddress The address of the proposal
+     * @param v2Pools Array of V2 pool addresses
+     * @param v3PoolAddresses Array of V3 pool addresses
+     * @param v3TokenIds Array of V3 position NFT token IDs
+     */
+    function savePoolDeploymentReport(
+        address proposalAddress,
+        address[] memory v2Pools,
+        address[] memory v3PoolAddresses,
+        uint256[] memory v3TokenIds
+    ) internal {
+        console.log("Saving pool deployment report...");
+        
+        // Create and populate V3 pool info array
+        V3PoolInfo[] memory v3Pools = new V3PoolInfo[](v3PoolAddresses.length);
+        for (uint256 i = 0; i < v3PoolAddresses.length; i++) {
+            v3Pools[i] = V3PoolInfo({
+                poolAddress: v3PoolAddresses[i],
+                tokenId: v3TokenIds[i]
+            });
+        }
+        
+        // Create pool deployment report
+        PoolDeploymentReport memory report = PoolDeploymentReport({
+            proposalAddress: proposalAddress,
+            v2Pools: v2Pools,
+            v3Pools: v3Pools
+        });
+        
+        // Create JSON string for the report
+        string memory reportJson = generateReportJson(report);
+        
+        // Save report to file
+        string memory fileName = string(abi.encodePacked(
+            "pool_deployment_",
+            vm.toString(proposalAddress),
+            ".json"
+        ));
+        
+        vm.writeFile(fileName, reportJson);
+        console.log("Pool deployment report saved to %s", fileName);
+    }
+
+    /**
+     * @notice Generates a JSON string for the pool deployment report
+     * @param report The pool deployment report structure
+     * @return jsonString The generated JSON string
+     */
+    function generateReportJson(PoolDeploymentReport memory report) internal pure returns (string memory) {
+        // Start with the opening braces
+        string memory jsonString = "{";
+        
+        // Add proposal address
+        jsonString = string(abi.encodePacked(
+            jsonString,
+            '"proposalAddress":"', vm.toString(report.proposalAddress), '",'
+        ));
+        
+        // Add V2 pools array
+        jsonString = string(abi.encodePacked(jsonString, '"v2Pools":['));
+        for (uint256 i = 0; i < report.v2Pools.length; i++) {
+            // Skip empty addresses
+            if (report.v2Pools[i] == address(0)) continue;
+            
+            jsonString = string(abi.encodePacked(
+                jsonString,
+                '"', vm.toString(report.v2Pools[i]), '"'
+            ));
+            
+            // Add comma if not the last element
+            if (i < report.v2Pools.length - 1) {
+                jsonString = string(abi.encodePacked(jsonString, ','));
+            }
+        }
+        jsonString = string(abi.encodePacked(jsonString, '],'));
+        
+        // Add V3 pools array
+        jsonString = string(abi.encodePacked(jsonString, '"v3Pools":['));
+        for (uint256 i = 0; i < report.v3Pools.length; i++) {
+            // Skip empty addresses
+            if (report.v3Pools[i].poolAddress == address(0)) continue;
+            
+            jsonString = string(abi.encodePacked(
+                jsonString,
+                '{"poolAddress":"', vm.toString(report.v3Pools[i].poolAddress),
+                '","tokenId":', vm.toString(report.v3Pools[i].tokenId),
+                '}'
+            ));
+            
+            // Add comma if not the last element
+            if (i < report.v3Pools.length - 1) {
+                jsonString = string(abi.encodePacked(jsonString, ','));
+            }
+        }
+        jsonString = string(abi.encodePacked(jsonString, ']'));
+        
+        // Close the JSON object
+        jsonString = string(abi.encodePacked(jsonString, '}'));
+        
+        return jsonString;
     }
 } 

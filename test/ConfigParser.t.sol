@@ -52,7 +52,7 @@ contract ConfigParserTest is Test {
         vm.setEnv("SUSHI_V2_FACTORY", "0xc35dadb65012ec5796536bd9864ed8773abc74c4");
         vm.setEnv("SUSHI_V2_ROUTER", "0x1b02da8cb0d097eb8d57a175b88c7d8b47997506");
         vm.setEnv("SUSHI_V3_FACTORY", "0x3e1b852f6ad9d52e88fc16d8c8af7825ec2ea4dd");
-        vm.setEnv("SUSHI_V3_ROUTER", "0xb4315e873dbcf96ffd0acd8ea43f689d8c20fb30");
+        vm.setEnv("SUSHI_V3_POSITION_MANAGER", "0xb4315e873dbcf96ffd0acd8ea43f689d8c20fb30");
         vm.setEnv("WXDAI_ADDRESS", "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d");
         vm.setEnv("PRIVATE_KEY", "");
         vm.setEnv("RPC_URL", "");
@@ -125,7 +125,7 @@ contract ConfigParserTest is Test {
         assertEq(config.sushiV2Factory, 0xc35DADB65012eC5796536bD9864eD8773aBc74C4);
         assertEq(config.sushiV2Router, 0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
         assertEq(config.sushiV3Factory, 0x3e1b852F6Ad9D52E88Fc16D8c8Af7825ec2eA4Dd);
-        assertEq(config.sushiV3Router, 0xb4315e873dBcf96Ffd0acd8EA43f689D8c20fB30);
+        assertEq(config.sushiV3PositionManager, 0xb4315e873dBcf96Ffd0acd8EA43f689D8c20fB30);
         assertEq(config.wxdai, 0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d);
         assertEq(config.privateKey, 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef);
         assertEq(config.rpcUrl, "https://rpc.gnosischain.com");
