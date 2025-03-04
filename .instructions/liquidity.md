@@ -280,30 +280,34 @@
 - **Dependencies:** Token addresses from step 5, liquidity calculations from step 6
 - **Implementation:**
   - **Files:**
-    - `src/deployment/V2PoolDeploymentEngine.sol` - Contract for deploying SushiSwap v2 pools
+    - `script/proposal/GetTokensAndCreatePools.s.sol` - Refactored script for obtaining tokens and creating SushiSwap v2 pools
     - `script/proposal/FutarchyProposalLiquidity.s.sol` - Main script with v2 pool deployment logic
   - **Key Components:**
-    - **Data Structures:**
-      - Reused `PoolLiquidity` struct from Liquidity Calculation Engine
+    - **GetTokensAndCreatePools Improvements:**
+      - Direct interaction with SushiSwap Router from user account (no intermediate contracts)
+      - Simplified token approval process with proper error handling
+      - Enhanced diagnostics with balance and allowance verification
+      - Clearer logging of all operations for easier troubleshooting
     - **Main Functions:**
-      - `deployV2Pools()` - Orchestrates the deployment of all v2 pools
-      - `deployPool()` - Deploys a single v2 pool using the SushiSwap V2 Router
+      - `run(address proposalAddress)` - Main entry point that orchestrates token extraction and pool creation
+      - `getConditionalTokens()` - Extracts conditional tokens from the proposal
+      - `createPools()` - Creates SushiSwap v2 pools directly using the router
+      - `approveToken()` - Handles token approvals with appropriate error checking
     - **Implementation Details:**
-      - Direct token extraction from proposal contract without external scripts
-      - Pool creation with factory contract
-      - Token approval for router contract
-      - Liquidity addition with calculated amounts
-      - Error handling for transaction failures
-      - Proper logging of pool addresses and liquidity amounts
+      - Direct token extraction from proposal contract
+      - Efficient token approval with proper error handling
+      - Direct pool creation via SushiSwap Router
+      - Enhanced diagnostics for balance and allowance verification
+      - Detailed logging of all operations
   - **Challenges Addressed:**
-    - Moved conditional token extraction logic directly into the Solidity script to avoid file permission issues
-    - Eliminated dependency on external FFI shell scripts for better reliability
-    - Removed file writing operations that caused permission issues in simulation mode
+    - Eliminated unnecessary token transfers to reduce gas costs
+    - Removed dependency on intermediate contracts for better reliability
+    - Added comprehensive error handling and diagnostics
+    - Improved script reliability with direct interaction pattern
   - **Outputs:**
-    - Creates 6 v2 pools in total:
-      - 4 token-WXDAI pools (YES_WXDAI/WXDAI, NO_WXDAI/WXDAI, YES_USDT/WXDAI, NO_USDT/WXDAI)
-      - 2 cross-token pools (YES_WXDAI/YES_USDT, NO_WXDAI/NO_USDT)
-    - Returns array of deployed pool addresses for further operations
+    - Creates liquidity pools with conditional tokens paired with WXDAI
+    - Provides detailed logs of all operations for troubleshooting
+    - Generates verification commands for created contracts
 
 ### 8. v3 Pool Parameter Calculation [done]
 **Objective:** Convert price ratios into ticks, fee tiers, and initial pool parameters for v3
