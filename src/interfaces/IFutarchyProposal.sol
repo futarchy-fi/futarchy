@@ -1,59 +1,54 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {IERC20} from "./IERC20Extended.sol";
+interface IERC20 {
+    function totalSupply() external view returns (uint256);
+    function balanceOf(address account) external view returns (uint256);
+    function transfer(address recipient, uint256 amount) external returns (bool);
+    function allowance(address owner, address spender) external view returns (uint256);
+    function approve(address spender, uint256 amount) external returns (bool);
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+}
 
 /**
  * @title IFutarchyProposal
- * @notice Interface for the FutarchyProposal contract
+ * @notice Interface for interacting with Futarchy proposal contracts
+ * @dev Used to extract conditional tokens and other proposal details
  */
 interface IFutarchyProposal {
     /**
      * @notice Returns the first collateral token
-     * @return The collateral token
+     * @return The address of the first collateral token
      */
-    function collateralToken1() external view returns (IERC20);
+    function collateral1() external view returns (address);
 
     /**
      * @notice Returns the second collateral token
-     * @return The collateral token
+     * @return The address of the second collateral token
      */
-    function collateralToken2() external view returns (IERC20);
+    function collateral2() external view returns (address);
 
     /**
-     * @notice Returns the condition IDs used for this proposal
-     * @return The condition ID
+     * @notice Returns the ConditionalTokens contract
+     * @return The address of the ConditionalTokens contract
      */
-    function conditionId() external view returns (bytes32);
+    function conditionalTokens() external view returns (address);
 
     /**
-     * @notice Returns the parent collection ID
-     * @return The parent collection ID
-     */
-    function parentCollectionId() external view returns (bytes32);
-
-    /**
-     * @notice Returns the parent market
-     * @return The address of the parent proposal
-     */
-    function parentMarket() external view returns (address);
-
-    /**
-     * @notice Returns the index of the parent proposal's outcome token
-     * @return The index of the parent proposal's outcome token
+     * @notice Returns the parent market index
+     * @return The parent market index
      */
     function parentOutcome() external view returns (uint256);
 
     /**
-     * @notice Returns the wrapped token and data for a specific outcome index
+     * @notice Returns the wrapped token for a specific outcome index
      * @param index The outcome index
-     * @return wrapped1155 The wrapped token
-     * @return data The token data
+     * @return The address of the wrapped outcome token
      */
-    function wrappedOutcome(uint256 index) external view returns (IERC20 wrapped1155, bytes memory data);
+    function wrappedOutcome(uint256 index) external view returns (address);
 
     /**
-     * @notice Returns the wrapped token and data for the parent proposal
+     * @notice Returns the parent wrapped outcome token and data
      * @return wrapped1155 The wrapped token
      * @return data The token data
      */
@@ -66,13 +61,8 @@ interface IFutarchyProposal {
     function numOutcomes() external view returns (uint256);
 
     /**
-     * @notice Helper function to resolve the proposal
+     * @notice Returns the proposal question
+     * @return The proposal question
      */
-    function resolve() external;
-
-    /**
-     * @notice Returns the Reality.eth question ID
-     * @return The question ID
-     */
-    function questionId() external view returns (bytes32);
+    function question() external view returns (string memory);
 } 

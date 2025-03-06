@@ -1,17 +1,17 @@
-// SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.20;
+// SPDX-License-Identifier: GPL-2.0-or-later
+pragma solidity ^0.8.20;
 
 /**
  * @title ISushiswapV3Factory
- * @dev Interface for the SushiSwap V3 Factory contract
+ * @notice Interface for the SushiSwap V3 Factory contract which deploys pools
  */
 interface ISushiswapV3Factory {
     /**
-     * @dev Creates a new pool for the given tokens and fee
-     * @param tokenA The first token of the pool
-     * @param tokenB The second token of the pool
-     * @param fee The fee tier of the pool
-     * @return pool The address of the created pool
+     * @notice Creates a pool for the given two tokens and fee
+     * @param tokenA The first token of the pool by address sort order
+     * @param tokenB The second token of the pool by address sort order
+     * @param fee The fee collected upon every swap in the pool, denominated in hundredths of a bip
+     * @return pool The address of the newly created pool
      */
     function createPool(
         address tokenA,
@@ -20,11 +20,11 @@ interface ISushiswapV3Factory {
     ) external returns (address pool);
 
     /**
-     * @dev Returns the pool address for the given tokens and fee
-     * @param tokenA The first token of the pool
-     * @param tokenB The second token of the pool
-     * @param fee The fee tier of the pool
-     * @return pool The address of the pool
+     * @notice Returns the pool address for a given pair of tokens and a fee, or address 0 if it does not exist
+     * @param tokenA The first token of the pool by address sort order
+     * @param tokenB The second token of the pool by address sort order
+     * @param fee The fee collected upon every swap in the pool, denominated in hundredths of a bip
+     * @return pool The pool address
      */
     function getPool(
         address tokenA,
@@ -33,27 +33,15 @@ interface ISushiswapV3Factory {
     ) external view returns (address pool);
 
     /**
-     * @dev Returns the fee amount tick spacing mapping
-     * @param fee The fee tier
-     * @return tickSpacing The tick spacing for the fee tier
-     */
-    function feeAmountTickSpacing(uint24 fee) external view returns (int24 tickSpacing);
-
-    /**
-     * @dev Returns the owner of the factory
+     * @notice Returns the current owner of the factory
+     * @return The address of the factory owner
      */
     function owner() external view returns (address);
 
     /**
-     * @dev Sets the owner of the factory
-     * @param _owner The new owner
+     * @notice Returns the tick spacing for a given fee tier
+     * @param fee The fee tier to get the tick spacing for
+     * @return The tick spacing
      */
-    function setOwner(address _owner) external;
-
-    /**
-     * @dev Enables a new fee tier with the given tick spacing
-     * @param fee The fee tier to enable
-     * @param tickSpacing The tick spacing for the fee tier
-     */
-    function enableFeeAmount(uint24 fee, int24 tickSpacing) external;
+    function feeAmountTickSpacing(uint24 fee) external view returns (int24);
 } 

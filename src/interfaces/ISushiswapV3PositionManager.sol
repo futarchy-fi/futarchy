@@ -1,11 +1,10 @@
-// SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.20;
-
-import {IERC20} from "./IERC20Extended.sol";
+// SPDX-License-Identifier: GPL-2.0-or-later
+pragma solidity ^0.8.20;
 
 /**
  * @title ISushiswapV3PositionManager
- * @dev Interface for the SushiSwap V3 NonfungiblePositionManager contract
+ * @notice Interface for the SushiSwap V3 NFT Position Manager
+ * @dev Wraps SushiSwap positions in the ERC721 non-fungible token interface
  */
 interface ISushiswapV3PositionManager {
     /**
@@ -37,12 +36,12 @@ interface ISushiswapV3PositionManager {
     }
 
     /**
-     * @dev Creates a new position wrapped in a NFT
-     * @param params The parameters for the position
-     * @return tokenId The ID of the minted NFT
-     * @return liquidity The amount of liquidity for the position
-     * @return amount0 The amount of token0 that was deposited
-     * @return amount1 The amount of token1 that was deposited
+     * @notice Creates a new position wrapped in a NFT
+     * @param params The parameters necessary for the mint, encoded as MintParams
+     * @return tokenId The ID of the token that represents the minted position
+     * @return liquidity The amount of liquidity for this position
+     * @return amount0 The amount of token0 that was paid to mint the position
+     * @return amount1 The amount of token1 that was paid to mint the position
      */
     function mint(MintParams calldata params)
         external
@@ -55,12 +54,12 @@ interface ISushiswapV3PositionManager {
         );
 
     /**
-     * @dev Creates a pool if it doesn't exist
-     * @param tokenA The first token of the pool
-     * @param tokenB The second token of the pool
-     * @param fee The fee tier of the pool
-     * @param sqrtPriceX96 The initial sqrt price of the pool
-     * @return pool The address of the pool
+     * @notice Creates a new pool if it does not exist and initializes it with a specific sqrt price
+     * @param tokenA The first token of the pool by address sort order
+     * @param tokenB The second token of the pool by address sort order
+     * @param fee The fee that should be collected upon every swap in the pool
+     * @param sqrtPriceX96 The initial sqrt price of the pool as a Q64.96
+     * @return pool The address of the newly created pool
      */
     function createAndInitializePoolIfNecessary(
         address tokenA,
@@ -75,20 +74,20 @@ interface ISushiswapV3PositionManager {
     function factory() external view returns (address);
 
     /**
-     * @dev Returns positions information
-     * @param tokenId The ID of the NFT
+     * @notice Returns the position information associated with a given token ID
+     * @param tokenId The ID of the token that represents the position
      * @return nonce The nonce for permits
-     * @return operator The approved address of the token
-     * @return token0 The address of the first token
-     * @return token1 The address of the second token
-     * @return fee The fee tier of the pool
-     * @return tickLower The lower tick of the position
-     * @return tickUpper The upper tick of the position
-     * @return liquidity The amount of liquidity for the position
-     * @return feeGrowthInside0LastX128 The fee growth inside for token0
-     * @return feeGrowthInside1LastX128 The fee growth inside for token1
-     * @return tokensOwed0 The amount of token0 owed to the position owner
-     * @return tokensOwed1 The amount of token1 owed to the position owner
+     * @return operator The address that is approved for spending this token
+     * @return token0 The address of the token0 for a specific pool
+     * @return token1 The address of the token1 for a specific pool
+     * @return fee The fee associated with the pool
+     * @return tickLower The lower end of the tick range for the position
+     * @return tickUpper The higher end of the tick range for the position
+     * @return liquidity The liquidity of the position
+     * @return feeGrowthInside0LastX128 The fee growth of token0 as of the last action
+     * @return feeGrowthInside1LastX128 The fee growth of token1 as of the last action
+     * @return tokensOwed0 The uncollected amount of token0 owed to the position
+     * @return tokensOwed1 The uncollected amount of token1 owed to the position
      */
     function positions(uint256 tokenId)
         external
