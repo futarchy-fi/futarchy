@@ -4,7 +4,8 @@ pragma solidity ^0.8.20;
 import "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 import {IFutarchyProposal} from "../../src/interfaces/IFutarchyProposal.sol";
-import {ISushiswapV3PositionManager} from "../../src/interfaces/ISushiswapV3PositionManager.sol";
+import {INonfungiblePositionManager} from "../../src/interfaces/INonfungiblePositionManager.sol";
+import {ISushiswapV3Factory} from "../../src/interfaces/ISushiswapV3Factory.sol";
 import {IERC20} from "../../src/interfaces/IERC20Extended.sol";
 
 /**
@@ -14,7 +15,7 @@ import {IERC20} from "../../src/interfaces/IERC20Extended.sol";
  *      with 0.1% fee tier and concentrated liquidity
  */
 contract DeployV3Pools is Script {
-    ISushiswapV3PositionManager public positionManager;
+    INonfungiblePositionManager public positionManager;
     IFutarchyProposal public proposal;
 
     address public token1Yes;
@@ -32,7 +33,7 @@ contract DeployV3Pools is Script {
     uint160 public constant SQRT_PRICE_X96 = 79228162514264337593543950336; // 1:1 price ratio
 
     function setUp() public {
-        positionManager = ISushiswapV3PositionManager(vm.envAddress("NONFUNGIBLE_POSITION_MANAGER"));
+        positionManager = INonfungiblePositionManager(vm.envAddress("NONFUNGIBLE_POSITION_MANAGER"));
         proposal = IFutarchyProposal(vm.envAddress("PROPOSAL_ADDRESS"));
 
         feeTier = uint24(vm.envUint("FEE_TIER"));
@@ -97,64 +98,193 @@ contract DeployV3Pools is Script {
         address token1 = tokenA < tokenB ? tokenB : tokenA;
 
         console.log("Working with token pair:");
-        console.log("- Token0: ");
+        console.logString("- Token0: ");
         console.logAddress(token0);
-        console.log("- Token1: ");
+        console.logString("- Token1: ");
         console.logAddress(token1);
+
+        // Check token balances and allowances before proceeding
+        checkBalancesAndAllowances(token0, token1);
 
         // Step 1: Approve tokens for the position manager
         console.log("Approving tokens...");
         IERC20(token0).approve(address(positionManager), amount0);
         IERC20(token1).approve(address(positionManager), amount1);
 
+        // Check allowances after approval
+        checkAllowances(token0, token1);
+
         // Step 2: Initialize the pool with a specific price if it doesn't exist
         console.log("Initializing pool...");
-        address pool = positionManager.createAndInitializePoolIfNecessary(
+        try positionManager.createAndInitializePoolIfNecessary(
             token0,
             token1,
             feeTier,
             SQRT_PRICE_X96
-        );
-        console.log("Pool initialized at: ");
-        console.logAddress(pool);
+        ) returns (address pool) {
+            console.logString("Pool initialized at: ");
+            console.logAddress(pool);
+            
+            // Step 3: Add liquidity by minting a position
+            console.log("Adding liquidity...");
+            INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams({
+                token0: token0,
+                token1: token1,
+                fee: feeTier,
+                tickLower: tickLower,
+                tickUpper: tickUpper,
+                amount0Desired: amount0,
+                amount1Desired: amount1,
+                amount0Min: 0, // No slippage protection for simplicity
+                amount1Min: 0, // No slippage protection for simplicity
+                recipient: msg.sender,
+                deadline: block.timestamp + 600 // 10 minutes
+            });
 
-        // Step 3: Add liquidity by minting a position
-        console.log("Adding liquidity...");
-        ISushiswapV3PositionManager.MintParams memory params = ISushiswapV3PositionManager.MintParams({
-            token0: token0,
-            token1: token1,
-            fee: feeTier,
-            tickLower: tickLower,
-            tickUpper: tickUpper,
-            amount0Desired: amount0,
-            amount1Desired: amount1,
-            amount0Min: 0, // No slippage protection for simplicity
-            amount1Min: 0, // No slippage protection for simplicity
-            recipient: msg.sender,
-            deadline: block.timestamp + 600 // 10 minutes
-        });
-
-        try positionManager.mint(params) returns (
-            uint256 tokenId, 
-            uint128 liquidity, 
-            uint256 amount0Used, 
-            uint256 amount1Used
-        ) {
-            console.log("Successfully added liquidity:");
-            console.log("- NFT Token ID: ");
-            console.logUint(tokenId);
-            console.log("- Liquidity: ");
-            console.logUint(uint256(liquidity));
-            console.log("- Token0 used: ");
-            console.logUint(amount0Used);
-            console.log("- Token1 used: ");
-            console.logUint(amount1Used);
+            try positionManager.mint(params) returns (
+                uint256 tokenId, 
+                uint128 liquidity, 
+                uint256 amount0Used, 
+                uint256 amount1Used
+            ) {
+                console.log("Successfully added liquidity:");
+                console.logString("- NFT Token ID: ");
+                console.logUint(tokenId);
+                console.logString("- Liquidity: ");
+                console.logUint(uint256(liquidity));
+                console.logString("- Token0 used: ");
+                console.logUint(amount0Used);
+                console.logString("- Token1 used: ");
+                console.logUint(amount1Used);
+            } catch Error(string memory reason) {
+                console.logString("Failed to add liquidity:");
+                console.logString("- Reason: ");
+                console.logString(reason);
+            } catch (bytes memory) {
+                console.logString("Failed to add liquidity (unknown error)");
+            }
         } catch Error(string memory reason) {
-            console.log("Failed to add liquidity:");
-            console.log("- Reason: ");
+            console.logString("Pool creation failed:");
+            console.logString("- Reason: ");
             console.logString(reason);
+            
+            // Try to check if pool already exists
+            address factory = positionManager.factory();
+            console.logString("Checking factory for existing pool:");
+            console.logString("- Factory: ");
+            console.logAddress(factory);
+            
+            try ISushiswapV3Factory(factory).getPool(token0, token1, feeTier) returns (address existingPool) {
+                console.logString("Existing pool found at: ");
+                console.logAddress(existingPool);
+                if (existingPool == address(0)) {
+                    console.logString("Pool does not exist, but creation still failed");
+                }
+            } catch Error(string memory factoryError) {
+                console.logString("Factory check failed:");
+                console.logString("- Reason: ");
+                console.logString(factoryError);
+            } catch (bytes memory) {
+                console.logString("Factory check failed (unknown error)");
+            }
         } catch (bytes memory) {
-            console.log("Failed to add liquidity (unknown error)");
+            console.logString("Pool creation failed (unknown error)");
+            
+            // Additional debugging for any possible issues
+            console.logString("Debugging information:");
+            console.logString("- Token0 code size: ");
+            uint256 token0Size;
+            assembly {
+                token0Size := extcodesize(token0)
+            }
+            console.logUint(token0Size);
+            
+            console.logString("- Token1 code size: ");
+            uint256 token1Size;
+            assembly {
+                token1Size := extcodesize(token1)
+            }
+            console.logUint(token1Size);
+            
+            console.logString("- Position Manager code size: ");
+            uint256 positionManagerSize;
+            assembly {
+                positionManagerSize := extcodesize(sload(positionManager.slot))
+            }
+            console.logUint(positionManagerSize);
+        }
+    }
+    
+    /**
+     * @notice Check token balances and allowances for the current sender
+     * @param token0 The first token address
+     * @param token1 The second token address
+     */
+    function checkBalancesAndAllowances(address token0, address token1) internal view {
+        address sender = msg.sender;
+        
+        // Check token0 balance
+        uint256 token0Balance = IERC20(token0).balanceOf(sender);
+        console.logString("Token0 balance check:");
+        console.logString("- Address: ");
+        console.logAddress(token0);
+        console.logString("- Balance: ");
+        console.logUint(token0Balance);
+        console.logString("- Required: ");
+        console.logUint(amount0);
+        
+        if (token0Balance < amount0) {
+            console.logString("WARNING: Insufficient token0 balance!");
+        }
+        
+        // Check token1 balance
+        uint256 token1Balance = IERC20(token1).balanceOf(sender);
+        console.logString("Token1 balance check:");
+        console.logString("- Address: ");
+        console.logAddress(token1);
+        console.logString("- Balance: ");
+        console.logUint(token1Balance);
+        console.logString("- Required: ");
+        console.logUint(amount1);
+        
+        if (token1Balance < amount1) {
+            console.logString("WARNING: Insufficient token1 balance!");
+        }
+        
+        // Check allowances
+        checkAllowances(token0, token1);
+    }
+    
+    /**
+     * @notice Check allowances granted to the position manager
+     * @param token0 The first token address
+     * @param token1 The second token address
+     */
+    function checkAllowances(address token0, address token1) internal view {
+        address sender = msg.sender;
+        
+        // Check token0 allowance
+        uint256 token0Allowance = IERC20(token0).allowance(sender, address(positionManager));
+        console.logString("Token0 allowance check:");
+        console.logString("- Allowance for position manager: ");
+        console.logUint(token0Allowance);
+        console.logString("- Required: ");
+        console.logUint(amount0);
+        
+        if (token0Allowance < amount0) {
+            console.logString("WARNING: Insufficient token0 allowance!");
+        }
+        
+        // Check token1 allowance
+        uint256 token1Allowance = IERC20(token1).allowance(sender, address(positionManager));
+        console.logString("Token1 allowance check:");
+        console.logString("- Allowance for position manager: ");
+        console.logUint(token1Allowance);
+        console.logString("- Required: ");
+        console.logUint(amount1);
+        
+        if (token1Allowance < amount1) {
+            console.logString("WARNING: Insufficient token1 allowance!");
         }
     }
     
