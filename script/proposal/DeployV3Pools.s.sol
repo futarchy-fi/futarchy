@@ -223,11 +223,16 @@ contract DeployV3Pools is Script {
     function checkBalancesAndAllowances(address token0, address token1) internal view {
         address sender = msg.sender;
         
+        console.logString("Address being checked for balances and allowances: ");
+        console.logAddress(sender);
+        
         // Check token0 balance
         uint256 token0Balance = IERC20(token0).balanceOf(sender);
         console.logString("Token0 balance check:");
-        console.logString("- Address: ");
+        console.logString("- Token address: ");
         console.logAddress(token0);
+        console.logString("- Balance owner: ");
+        console.logAddress(sender);
         console.logString("- Balance: ");
         console.logUint(token0Balance);
         console.logString("- Required: ");
@@ -240,8 +245,10 @@ contract DeployV3Pools is Script {
         // Check token1 balance
         uint256 token1Balance = IERC20(token1).balanceOf(sender);
         console.logString("Token1 balance check:");
-        console.logString("- Address: ");
+        console.logString("- Token address: ");
         console.logAddress(token1);
+        console.logString("- Balance owner: ");
+        console.logAddress(sender);
         console.logString("- Balance: ");
         console.logUint(token1Balance);
         console.logString("- Required: ");
@@ -266,6 +273,12 @@ contract DeployV3Pools is Script {
         // Check token0 allowance
         uint256 token0Allowance = IERC20(token0).allowance(sender, address(positionManager));
         console.logString("Token0 allowance check:");
+        console.logString("- Token address: ");
+        console.logAddress(token0);
+        console.logString("- Owner address: ");
+        console.logAddress(sender);
+        console.logString("- Spender address: ");
+        console.logAddress(address(positionManager));
         console.logString("- Allowance for position manager: ");
         console.logUint(token0Allowance);
         console.logString("- Required: ");
@@ -278,6 +291,12 @@ contract DeployV3Pools is Script {
         // Check token1 allowance
         uint256 token1Allowance = IERC20(token1).allowance(sender, address(positionManager));
         console.logString("Token1 allowance check:");
+        console.logString("- Token address: ");
+        console.logAddress(token1);
+        console.logString("- Owner address: ");
+        console.logAddress(sender);
+        console.logString("- Spender address: ");
+        console.logAddress(address(positionManager));
         console.logString("- Allowance for position manager: ");
         console.logUint(token1Allowance);
         console.logString("- Required: ");
