@@ -10,3 +10,15 @@
 [submodule "lib/chainlink-brownie-contracts"]
 	path = lib/chainlink-brownie-contracts
 	url = https://github.com/smartcontractkit/chainlink-brownie-contracts
+[submodule "lib/openzeppelin-solidity"]
+	path = lib/openzeppelin-solidity
+	url = https://github.com/OpenZeppelin/openzeppelin-solidity
+[submodule "lib/conditional-tokens-contracts"]
+	path = lib/conditional-tokens-contracts
+	url = https://github.com/gnosis/conditional-tokens-contracts
+[submodule "lib/conditional-tokens-market-makers"]
+	path = lib/conditional-tokens-market-makers
+	url = https://github.com/gnosis/conditional-tokens-market-makers
+[submodule "lib/1155-to-20"]
+	path = lib/1155-to-20
+	url = https://github.com/gnosis/1155-to-20
