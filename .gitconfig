@@ -1,0 +1,9 @@
+[status]
+    submodulesummary = 0
+
+[submodule]
+    recurse = true
+    ignore = dirty
+
+[diff]
+    ignoreSubmodules = dirty 
