@@ -30,6 +30,17 @@ interface IUniswapV3PassthroughRouter {
     /// @return results Array of results from each function call
     function multicall(bytes[] calldata data) external returns (bytes[] memory results);
 
+    /// @notice Executes a single call to an external contract
+    /// @param target The address of the contract to call
+    /// @param value The amount of ETH to send with the call
+    /// @param data The calldata to send with the call
+    /// @return The return data from the call
+    function exec(
+        address target,
+        uint256 value,
+        bytes calldata data
+    ) external payable returns (bytes memory);
+
     /// @notice Swaps amountSpecified of one token for as much as possible of another token across a single pool
     /// @param pool The Uniswap V3 pool to swap through
     /// @param recipient The address to receive the output of the swap

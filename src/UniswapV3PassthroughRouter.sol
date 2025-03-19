@@ -62,6 +62,17 @@ contract UniswapV3PassthroughRouter is IUniswapV3PassthroughRouter, IUniswapV3Sw
         return results;
     }
 
+    // Single call
+    function exec(
+        address target,
+        uint256 value,
+        bytes calldata data
+    ) external payable onlyOwner returns (bytes memory) {
+        (bool success, bytes memory result) = target.call{value: value}(data);
+        require(success, "Call failed");
+        return result;
+    }
+
     /// @inheritdoc IUniswapV3PassthroughRouter
     function swap(
         address pool,
