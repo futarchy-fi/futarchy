@@ -137,3 +137,10 @@ broadcast/
 .env
 .env.example
 *.code-workspace
+
+# macOS specific
+.DS_Store
+**/.DS_Store
+
+# Reference files
+.reference/
