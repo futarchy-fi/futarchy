@@ -75,49 +75,54 @@ contract UniswapV3PassthroughRouter is IUniswapV3PassthroughRouter, IUniswapV3Sw
 
     /// @inheritdoc IUniswapV3PassthroughRouter
     function swap(
-        address pool,
-        address recipient,
-        bool zeroForOne,
-        int256 amountSpecified,
-        uint160 sqrtPriceLimitX96,
-        bytes calldata data
-    ) external override onlyOwner returns (int256 amount0, int256 amount1) {
+        PoolInteraction calldata poolInfo,
+        TokenInteraction calldata tokenInfo
+    ) external onlyOwner returns (int256 amount0, int256 amount1) {
         // If amountSpecified is positive, we need to pull tokens from the user ahead of time
-        if (amountSpecified > 0) {
+        if (tokenInfo.amountSpecified > 0) {
             address tokenToPull;
-            if (zeroForOne) {
-                tokenToPull = IUniswapV3Pool(pool).token0();
+            if (tokenInfo.zeroForOne) {
+                tokenToPull = IUniswapV3Pool(poolInfo.pool).token0();
             } else {
-                tokenToPull = IUniswapV3Pool(pool).token1();
+                tokenToPull = IUniswapV3Pool(poolInfo.pool).token1();
             }
             
             // Pull tokens from the owner to this contract
             IERC20Minimal(tokenToPull).transferFrom(
                 msg.sender,
                 address(this),
-                uint256(amountSpecified)
+                uint256(tokenInfo.amountSpecified)
             );
             
             // Approve the pool to spend those tokens
-            IERC20Minimal(tokenToPull).approve(pool, uint256(amountSpecified));
+            IERC20Minimal(tokenToPull).approve(poolInfo.pool, uint256(tokenInfo.amountSpecified));
         }
         
         // Authorize pool if not already authorized
-        if (!authorizedPools[pool]) {
-            authorizedPools[pool] = true;
-            emit PoolAuthorized(pool);
+        if (!authorizedPools[poolInfo.pool]) {
+            authorizedPools[poolInfo.pool] = true;
+            emit PoolAuthorized(poolInfo.pool);
         }
         
         // Store just the sender address in callback data (no need to pass tokens now)
-        bytes memory callbackData = abi.encode(msg.sender, data);
+        bytes memory callbackData = abi.encode(msg.sender, poolInfo.callbackData);
         
-        (amount0, amount1) = IUniswapV3Pool(pool).swap(
-            recipient,
-            zeroForOne,
-            amountSpecified,
-            sqrtPriceLimitX96,
+        (amount0, amount1) = IUniswapV3Pool(poolInfo.pool).swap(
+            poolInfo.recipient,
+            tokenInfo.zeroForOne,
+            tokenInfo.amountSpecified,
+            tokenInfo.sqrtPriceLimitX96,
             callbackData
         );
+
+        // Check that the minimum amount received is satisfied
+        if (tokenInfo.zeroForOne) {
+            // When swapping token0 for token1, amount1 should be negative (tokens received)
+            require(-amount1 >= int256(tokenInfo.minAmountReceived), "UniswapV3Router: insufficient output amount");
+        } else {
+            // When swapping token1 for token0, amount0 should be negative (tokens received)
+            require(-amount0 >= int256(tokenInfo.minAmountReceived), "UniswapV3Router: insufficient output amount");
+        }
     }
 
     /// @inheritdoc IUniswapV3SwapCallback
