@@ -59,6 +59,21 @@ All contracts are deployed and verified on Gnosis Chain:
 
 All contracts are verified and can be interacted with through GnosisScan.
 
+## Setup
+
+Install the Foundry toolchain:
+
+```bash
+curl -L https://foundry.paradigm.xyz | bash
+foundryup
+```
+
+After installation, verify everything is working:
+
+```bash
+forge --version
+```
+
 ## Development Status
 
 This repository is under active development. Installation and development instructions will be added soon.
