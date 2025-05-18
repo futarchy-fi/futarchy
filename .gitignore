@@ -135,7 +135,6 @@ cache/
 broadcast/
 
 .env
-.env.example
 *.code-workspace
 
 # macOS specific
