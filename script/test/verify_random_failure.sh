@@ -28,7 +28,7 @@ else
 fi
 
 # Verify import in FutarchyOracle.sol
-if grep -q "import \"./RandomFutarchyFailure.sol\"" "src/FAO/FutarchyOracle.sol"; then
+if grep -q "import \"../FAO/RandomFutarchyFailure.sol\"" "src/core/FutarchyOracle.sol"; then
     echo -e "${GREEN}✓ FutarchyOracle.sol imports RandomFutarchyFailure.sol${NC}"
 else
     echo -e "${RED}✗ FutarchyOracle.sol does not import RandomFutarchyFailure.sol${NC}"
