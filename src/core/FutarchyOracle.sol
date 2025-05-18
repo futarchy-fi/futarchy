@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./RandomFutarchyFailure.sol";
+import "../FAO/RandomFutarchyFailure.sol";
 import "../interfaces/IConditionalTokens.sol";
 
 interface IUniswapV3Pool {

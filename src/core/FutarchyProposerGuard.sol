@@ -3,12 +3,12 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./ProposalNFT.sol";
+import "../FAO/ProposalNFT.sol";
 import "../interfaces/IConditionalTokens.sol";
 import "../interfaces/IWrapped1155Factory.sol";
 import "./FutarchyOracle.sol";
 import "./FutarchyGovernor.sol";
-import "./ProposalManager.sol";
+import "../FAO/ProposalManager.sol";
 
 contract FutarchyProposerGuard is Ownable {
     IConditionalTokens public immutable conditionalTokens;
