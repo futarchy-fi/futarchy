@@ -38,3 +38,4 @@ fi
 echo -e "${GREEN}All checks passed successfully!${NC}"
 echo "==============================================="
 echo "The RandomFutarchyFailure.sol file has been successfully created and can be imported by FutarchyOracle.sol." 
+
