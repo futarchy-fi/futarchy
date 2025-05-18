@@ -3,7 +3,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "../src/gnosis/GnosisCTFAdapter.sol";
+import "../src/core/GnosisCTFAdapter.sol";
 import "../src/mocks/MockERC20.sol";
 import "../src/mocks/MockConditionalTokens.sol";
 import "../src/mocks/MockWrapped1155Factory.sol";

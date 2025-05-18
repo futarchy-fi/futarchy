@@ -10,7 +10,7 @@ This repository contains the core smart contracts for the Futarchy protocol, ena
 
 ### Conditional Token Framework
 - `src/interfaces/ICTFAdapter.sol`: Interface for conditional token operations
-- `src/gnosis/GnosisCTFAdapter.sol`: Implementation for Gnosis CTF
+- `src/core/GnosisCTFAdapter.sol`: Implementation for Gnosis CTF
 
 ### Optimizer Module
 - `src/optimizer/FaoGovernor.sol`: Governance execution contract

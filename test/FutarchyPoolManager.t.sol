@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 import "../src/FutarchyPoolManager.sol";
-import "../src/gnosis/GnosisCTFAdapter.sol";
+import "../src/core/GnosisCTFAdapter.sol";
 import "../src/mocks/MockERC20.sol";
 import "../src/mocks/MockBalancerPoolWrapper.sol";
 import "../src/mocks/MockConditionalTokens.sol";

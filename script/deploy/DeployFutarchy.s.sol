@@ -5,12 +5,12 @@ import "forge-std/Script.sol";
 
 // Core Futarchy
 import { FutarchyPoolManager } from "../../src/FutarchyPoolManager.sol";
-import { GnosisCTFAdapter } from "../../src/gnosis/GnosisCTFAdapter.sol";
+import { GnosisCTFAdapter } from "../../src/core/GnosisCTFAdapter.sol";
 import { BalancerPoolWrapper } from "../../src/pools/BalancerPoolWrapper.sol";
-import { FutarchyProposerGuard } from "../../src/FAO/FutarchyProposerGuard.sol";
-import { FutarchyGovernor } from "../../src/FAO/FutarchyGovernor.sol";
-import { FutarchyOracle } from "../../src/FAO/FutarchyOracle.sol";
-import { FutarchyRandomFailure } from "../../src/FAO/FutarchyRandomFailure.sol";
+import { FutarchyProposerGuard } from "../../src/core/FutarchyProposerGuard.sol";
+import { FutarchyGovernor } from "../../src/core/FutarchyGovernor.sol";
+import { FutarchyOracle } from "../../src/core/FutarchyOracle.sol";
+import { FutarchyRandomFailure } from "../../src/core/FutarchyRandomFailure.sol";
 import { ProposalNFT } from "../../src/FAO/ProposalNFT.sol";
 import { ProposalManager } from "../../src/FAO/ProposalManager.sol";
 
