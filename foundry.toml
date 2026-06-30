@@ -27,12 +27,20 @@ bracket_spacing = true
 
 [profile.ci]
 verbosity = 4
-fuzz_runs = 1000
+
+[profile.ci.fuzz]
+runs = 1000
+
+[profile.registry]
+test = "test/registry"
+script = "script/deploy"
 
 [rpc_endpoints]
 gnosis = "https://rpc.gnosischain.com"
+chiado = "https://rpc.chiadochain.net"
 
 [etherscan]
 gnosis = { key = "${ETHERSCAN_KEY}", url = "https://api.gnosisscan.io/api" }
+chiado = { key = "${ETHERSCAN_KEY}", url = "https://api-chiado.gnosisscan.io/api" }
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
