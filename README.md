@@ -23,6 +23,17 @@ This repository contains the core smart contracts for the Futarchy protocol, ena
 ### Combinatorial Framework
 - `src/combinatorial/`: Advanced combinatorial market framework (WIP)
 
+## Deployed Contracts (Robinhood Chain, 4663)
+
+The Seer-based futarchy stack (FutarchyFactory, FutarchyProposal, FutarchyRouter, FutarchyRealityProxy, ConditionalTokens,
+Wrapped1155Factory, Reality.eth v3) was deployed on Robinhood Chain on 2026-11-11. Addresses, constructor arguments and
+compiler settings are in [`deployments/robinhood-4663.json`](deployments/robinhood-4663.json).
+
+- **FutarchyFactory:** `0xebb2bf1cbdd625a8118b720877a7e361696e7a14`, built from [`.reference/FutarchyFactory.sol`](.reference/FutarchyFactory.sol).
+  Unlike the Ethereum and Gnosis factories, it creates outcome tokens with the decimals of their collateral (USDG has 6), not a fixed 18.
+- **FutarchyRouter:** `0x7834bb7f4724393043701b2a944feae0496e00ad`
+- The Reality.eth arbitrator is the deployer EOA: there is no Kleros court on Robinhood Chain.
+
 ## Deployed Contracts (Gnosis Chain)
 
 All contracts are deployed and verified on Gnosis Chain:
