@@ -7,13 +7,13 @@
   "deployedAt": "2026-11-11",
   "contracts": {
     "FutarchyFactory": {
-      "address": "0xebb2bf1cbdd625a8118b720877a7e361696e7a14",
-      "deployBlock": 112079593,
+      "address": "0x9b93fdcc9380a7e3df4978d856eaca4f7ee36fa2",
+      "deployBlock": 112137215,
       "source": ".reference/FutarchyFactory.sol (this commit)",
       "compiler": "solc 0.8.20, evmVersion paris, optimizer 100 runs",
       "constructorArgs": {
         "proposal": "0x6dea2e077a4ca4d47efdad851c97ebdc0a8c08b2",
-        "arbitrator": "0x645A3D9208523bbFEE980f7269ac72C61Dd3b552",
+        "arbitrator": "0xb03B5e6d1a8138be9770443a24A01b37Fca8C2f7",
         "realitio": "0x13279f59e694369e1d591e95b08a3107b8520ed3",
         "wrapped1155Factory": "0x9d0bb3418b1834e40bd106c0dbb9318cdc847468",
         "conditionalTokens": "0x3aee58842a1d76c50f36eb5a34e79ef958d082c7",
@@ -57,7 +57,26 @@
     }
   },
   "notes": [
-    "The arbitrator is the deployer EOA: there is no Kleros court on Robinhood Chain.",
-    "An earlier factory at 0x37041aae214fb487f7bfff63a3e3414b099fbe1a used the unpatched source (18-decimal outcome tokens). It has no markets and must not be used."
-  ]
+    "The Reality.eth arbitrator is a 2-of-3 Safe: there is no Kleros court on Robinhood Chain.",
+    "Superseded factories, same chain, do not create markets on them: 0xebb2bf1cbdd625a8118b720877a7e361696e7a14 (same code, EOA arbitrator, holds one test market) and 0x37041aae214fb487f7bfff63a3e3414b099fbe1a (unpatched source, 18-decimal outcome tokens, no markets).",
+    "All contracts are verified on Sourcify for chain 4663."
+  ],
+  "arbitratorSafe": {
+    "address": "0xb03B5e6d1a8138be9770443a24A01b37Fca8C2f7",
+    "threshold": 2,
+    "owners": {
+      "0x645A3D9208523bbFEE980f7269ac72C61Dd3b552": "fleet deployer EOA",
+      "0xEB2AEC308e7B3340Dea2E89d40187D2637C6c649": "kas.eth (Kelvin)",
+      "0x33A0b5d7DA5314594D2C163D448030b9F1cADcb2": "nicscl.eth (Nicholas)"
+    },
+    "safeVersion": "1.4.1"
+  },
+  "markets": {
+    "NVDA / Jensen Huang CEO (2026-11-12)": {
+      "proposal": "0x9693989EF16C43274D0b85138BaF22F21651970a",
+      "yesPool": "0xba71c15c9A92a3875144Accc0416FE67D898b77C",
+      "noPool": "0x2616fBb93e1b3283d2a14760768D5Ec2ec352c90",
+      "collateral": "NVDA (Robinhood token) / USDG"
+    }
+  }
 }

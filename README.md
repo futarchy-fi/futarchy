@@ -29,10 +29,10 @@ The Seer-based futarchy stack (FutarchyFactory, FutarchyProposal, FutarchyRouter
 Wrapped1155Factory, Reality.eth v3) was deployed on Robinhood Chain on 2026-11-11. Addresses, constructor arguments and
 compiler settings are in [`deployments/robinhood-4663.json`](deployments/robinhood-4663.json).
 
-- **FutarchyFactory:** `0xebb2bf1cbdd625a8118b720877a7e361696e7a14`, built from [`.reference/FutarchyFactory.sol`](.reference/FutarchyFactory.sol).
+- **FutarchyFactory:** `0x9b93fdcc9380a7e3df4978d856eaca4f7ee36fa2`, built from [`.reference/FutarchyFactory.sol`](.reference/FutarchyFactory.sol).
   Unlike the Ethereum and Gnosis factories, it creates outcome tokens with the decimals of their collateral (USDG has 6), not a fixed 18.
 - **FutarchyRouter:** `0x7834bb7f4724393043701b2a944feae0496e00ad`
-- The Reality.eth arbitrator is the deployer EOA: there is no Kleros court on Robinhood Chain.
+- **Arbitrator:** the Reality.eth arbitrator is a 2-of-3 Safe, `0xb03B5e6d1a8138be9770443a24A01b37Fca8C2f7`. There is no Kleros court on Robinhood Chain.
 
 ## Deployed Contracts (Gnosis Chain)
 
