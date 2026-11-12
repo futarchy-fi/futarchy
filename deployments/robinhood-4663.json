@@ -1,0 +1,82 @@
+{
+  "chainId": 4663,
+  "network": "Robinhood Chain",
+  "rpc": "https://rpc.mainnet.chain.robinhood.com",
+  "explorer": "https://robinhoodchain.blockscout.com",
+  "deployer": "0x645A3D9208523bbFEE980f7269ac72C61Dd3b552",
+  "deployedAt": "2026-11-11",
+  "contracts": {
+    "FutarchyFactory": {
+      "address": "0x9b93fdcc9380a7e3df4978d856eaca4f7ee36fa2",
+      "deployBlock": 112137215,
+      "source": ".reference/FutarchyFactory.sol (this commit)",
+      "compiler": "solc 0.8.20, evmVersion paris, optimizer 100 runs",
+      "constructorArgs": {
+        "proposal": "0x6dea2e077a4ca4d47efdad851c97ebdc0a8c08b2",
+        "arbitrator": "0xb03B5e6d1a8138be9770443a24A01b37Fca8C2f7",
+        "realitio": "0x13279f59e694369e1d591e95b08a3107b8520ed3",
+        "wrapped1155Factory": "0x9d0bb3418b1834e40bd106c0dbb9318cdc847468",
+        "conditionalTokens": "0x3aee58842a1d76c50f36eb5a34e79ef958d082c7",
+        "realityProxy": "0x9fa54ba2abe1362beecf5a8b6c24861938efcadb",
+        "questionTimeout": 302400
+      }
+    },
+    "FutarchyProposal": {
+      "address": "0x6dea2e077a4ca4d47efdad851c97ebdc0a8c08b2",
+      "note": "same creation bytecode as Ethereum mainnet 0x0956b70AC0Eca45DB9661a1cEE96B2e7062d8a1C"
+    },
+    "FutarchyRealityProxy": {
+      "address": "0x9fa54ba2abe1362beecf5a8b6c24861938efcadb",
+      "note": "same creation bytecode as Ethereum mainnet 0xa638F22cDD13013494971b0e1325718AA45280dc, constructor (conditionalTokens, realitio)"
+    },
+    "FutarchyRouter": {
+      "address": "0x7834bb7f4724393043701b2a944feae0496e00ad",
+      "note": "same creation bytecode as Ethereum mainnet 0xAc9Bf8EbA6Bd31f8E8c76f8E8B2AAd0BD93f98Dc, constructor (conditionalTokens, wrapped1155Factory)"
+    },
+    "ConditionalTokens": {
+      "address": "0x3aee58842a1d76c50f36eb5a34e79ef958d082c7",
+      "note": "same creation bytecode as Ethereum mainnet 0xC59b0e4De5F1248C1140964E0fF287B192407E0C"
+    },
+    "Wrapped1155Factory": {
+      "address": "0x9d0bb3418b1834e40bd106c0dbb9318cdc847468",
+      "note": "same creation bytecode as Ethereum mainnet 0xD194319D1804C1051DD21Ba1Dc931cA72410B79f"
+    },
+    "RealityETH_v3_0": {
+      "address": "0x13279f59e694369e1d591e95b08a3107b8520ed3",
+      "note": "same creation bytecode as Ethereum mainnet 0x5b7dD1E86623548AF054A4985F7fc8Ccbb554E2c"
+    }
+  },
+  "external": {
+    "uniswapV3": {
+      "factory": "0x1f7d7550B1b028f7571E69A784071F0205FD2EfA",
+      "nfpm": "0x73991a25c818bf1f1128deaab1492d45638de0d3",
+      "swapRouter02": "0xcaf681a66d020601342297493863e78c959e5cb2",
+      "quoterV2": "0x33e885ed0ec9bf04ecfb19341582aadcb4c8a9e7",
+      "universalRouter": "0x8876789976decbfcbbbe364623c63652db8c0904",
+      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+    }
+  },
+  "notes": [
+    "The Reality.eth arbitrator is a 2-of-3 Safe: there is no Kleros court on Robinhood Chain.",
+    "Superseded factories, same chain, do not create markets on them: 0xebb2bf1cbdd625a8118b720877a7e361696e7a14 (same code, EOA arbitrator, holds one test market) and 0x37041aae214fb487f7bfff63a3e3414b099fbe1a (unpatched source, 18-decimal outcome tokens, no markets).",
+    "All contracts are verified on Sourcify for chain 4663."
+  ],
+  "arbitratorSafe": {
+    "address": "0xb03B5e6d1a8138be9770443a24A01b37Fca8C2f7",
+    "threshold": 2,
+    "owners": {
+      "0x645A3D9208523bbFEE980f7269ac72C61Dd3b552": "fleet deployer EOA",
+      "0xEB2AEC308e7B3340Dea2E89d40187D2637C6c649": "kas.eth (Kelvin)",
+      "0x33A0b5d7DA5314594D2C163D448030b9F1cADcb2": "nicscl.eth (Nicholas)"
+    },
+    "safeVersion": "1.4.1"
+  },
+  "markets": {
+    "NVDA / Jensen Huang CEO (2026-11-12)": {
+      "proposal": "0x9693989EF16C43274D0b85138BaF22F21651970a",
+      "yesPool": "0xba71c15c9A92a3875144Accc0416FE67D898b77C",
+      "noPool": "0x2616fBb93e1b3283d2a14760768D5Ec2ec352c90",
+      "collateral": "NVDA (Robinhood token) / USDG"
+    }
+  }
+}

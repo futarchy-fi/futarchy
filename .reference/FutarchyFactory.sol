@@ -18,6 +18,10 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 /// Each proposal has four outcomes (Yes/Token1, Yes/Token2, No/Token1, No/Token2).
 /// There's one reality question asking whether or not the proposal should be accepted.
 /// If the proposal is accepted, the first two outcomes (Yes) are redeemable, otherwise, the last two are redeemable (No).
+interface IERC20Decimals {
+    function decimals() external view returns (uint8);
+}
+
 contract FutarchyFactory {
     using Clones for address;
 
@@ -261,7 +265,9 @@ contract FutarchyFactory {
 
             require(bytes(tokenNames[j]).length != 0, "Missing token name");
 
-            bytes memory _data = abi.encodePacked(toString31(tokenNames[j]), toString31(tokenNames[j]), uint8(18));
+            // Outcome tokens use the decimals of their collateral, so a 6-decimal collateral gives 6-decimal outcome tokens.
+            uint8 _decimals = IERC20Decimals(address(j < 2 ? collateralToken1 : collateralToken2)).decimals();
+            bytes memory _data = abi.encodePacked(toString31(tokenNames[j]), toString31(tokenNames[j]), _decimals);
 
             IERC20 _wrapped1155 = wrapped1155Factory.requireWrapped1155(address(conditionalTokens), tokenId, _data);
 
@@ -297,8 +303,8 @@ contract FutarchyFactory {
         return proposals;
     }
 
-    /// @notice Returns the amount of proposals created by this factory.
-    /// @return The amount of proposals.
+    /// @notice Returns the total number of proposals created by this factory.
+    /// @return The count of proposals.
     function marketsCount() external view returns (uint256) {
         return proposals.length;
     }
