@@ -1,0 +1,14 @@
+# Self-contained project: the deployed bytecode is reproduced with exactly these settings.
+[profile.default]
+src = "src"
+test = "test"
+out = "out"
+cache_path = "cache"
+libs = ["../lib"]
+remappings = ["forge-std/=../lib/forge-std/src/"]
+solc = "0.8.20"
+evm_version = "paris"
+optimizer = true
+optimizer_runs = 200
+bytecode_hash = "ipfs"
+fs_permissions = [{ access = "read", path = "./bytecode" }]
