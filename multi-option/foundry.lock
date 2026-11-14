@@ -1,0 +1,26 @@
+{
+  "../lib/1155-to-20": {
+    "rev": "4bf9e0b4562f0313fa5df2ed24897adb978e0ae9"
+  },
+  "../lib/chainlink": {
+    "rev": "0f769bbc0ec065b90bea5fa1bdde1a26b620ad0c"
+  },
+  "../lib/chainlink-brownie-contracts": {
+    "rev": "5cb41fbc9b525338b6098da5ea7dd0b7e92f89e4"
+  },
+  "../lib/conditional-tokens-contracts": {
+    "rev": "eeefca66eb46c800a9aaab88db2064a99026fde5"
+  },
+  "../lib/conditional-tokens-market-makers": {
+    "rev": "6814c0247c745680bb13298d4f0dd7f5b574d0db"
+  },
+  "../lib/forge-std": {
+    "rev": "3b20d60d14b343ee4f908cb8079495c07f5e8981"
+  },
+  "../lib/openzeppelin-contracts": {
+    "rev": "acd4ff74de833399287ed6b31b4debf6b2b35527"
+  },
+  "../lib/openzeppelin-solidity": {
+    "rev": "58a3368215581509d05bd3ec4d53cd381c9bb40e"
+  }
+}

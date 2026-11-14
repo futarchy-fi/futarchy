@@ -12,7 +12,8 @@ contract FutarchyMultiFactory {
     struct CreateProposalParams {
         string marketName;
         /// Option names shown to Reality.eth answerers, for example "Ian Buck". No double quotes.
-        /// The last option must be the catch-all ("Other"): invalid answers pay it.
+        /// The last option must be the catch-all ("Other"): an invalid answer pays it, so answering
+        /// "invalid" is in effect answering "Other".
         string[] outcomes;
         /// Short symbols for token names, for example "BUCK". Token name is SYMBOL_COLLATERAL.
         string[] outcomeSymbols;
@@ -28,7 +29,8 @@ contract FutarchyMultiFactory {
     }
 
     uint8 internal constant REALITY_SINGLE_SELECT_TEMPLATE = 2;
-    uint256 public constant MAX_OUTCOMES = 32;
+    /// Creating a market deploys 2N tokens in one transaction; 16 keeps that well inside a block.
+    uint256 public constant MAX_OUTCOMES = 16;
 
     uint32 public immutable questionTimeout;
     address public immutable arbitrator;
@@ -39,6 +41,8 @@ contract FutarchyMultiFactory {
 
     address[] public proposals;
     mapping(address => bool) public isProposal;
+    /// One market per Reality.eth question, so a question's positions have exactly one set of tokens.
+    mapping(bytes32 => bool) public questionUsed;
 
     event NewMultiProposal(
         address indexed proposal,
@@ -67,9 +71,17 @@ contract FutarchyMultiFactory {
 
     function createProposal(CreateProposalParams memory p) external returns (address) {
         uint256 n = p.outcomes.length;
-        require(n >= 2 && n <= MAX_OUTCOMES, "2 to 32 options");
+        require(n >= 2 && n <= MAX_OUTCOMES, "2 to 16 options");
         require(p.outcomeSymbols.length == n, "one symbol per option");
         require(address(p.collateralToken1) != address(p.collateralToken2), "collaterals must differ");
+        // These strings are placed inside the Reality.eth question, where a quote, a backslash or the
+        // field separator would let a creator add or hide options.
+        requireSafeText(p.marketName);
+        requireSafeText(p.category);
+        requireSafeText(p.lang);
+        for (uint256 i = 0; i < n; i++) {
+            requireSafeText(p.outcomes[i]);
+        }
 
         FutarchyMultiProposal.Params memory params;
         params.collateralToken1 = p.collateralToken1;
@@ -92,6 +104,8 @@ contract FutarchyMultiFactory {
 
         params.encodedQuestion = encodeRealityQuestion(p.marketName, p.outcomes, p.category, p.lang);
         params.questionId = askRealityQuestion(params.encodedQuestion, p.openingTime, p.minBond);
+        require(!questionUsed[params.questionId], "a market already exists for this question");
+        questionUsed[params.questionId] = true;
         params.conditionId = prepareCondition(params.questionId, n);
 
         (IERC20[] memory wrapped, bytes[] memory data) = deployERC20Positions(params, p.outcomeSymbols);
@@ -108,6 +122,19 @@ contract FutarchyMultiFactory {
         );
 
         return address(instance);
+    }
+
+    /// @dev Rejects characters that would change the structure of the encoded question: double quote,
+    /// backslash, control characters and the separator U+241F (bytes E2 90 9F).
+    function requireSafeText(string memory text) internal pure {
+        bytes memory b = bytes(text);
+        for (uint256 i = 0; i < b.length; i++) {
+            bytes1 c = b[i];
+            require(c >= 0x20 && c != 0x22 && c != 0x5c && c != 0x7f, "text has a forbidden character");
+            if (c == 0xe2 && i + 2 < b.length) {
+                require(!(b[i + 1] == 0x90 && b[i + 2] == 0x9f), "text has the field separator");
+            }
+        }
     }
 
     /// @dev Reality.eth single-select format: question ␟ "A","B",... ␟ category ␟ lang.

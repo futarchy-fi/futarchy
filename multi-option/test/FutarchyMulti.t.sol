@@ -6,7 +6,7 @@ import {IConditionalTokens, IERC20, IRealityETH_v3_0, IWrapped1155Factory} from 
 import {FutarchyMultiFactory} from "../src/FutarchyMultiFactory.sol";
 import {FutarchyMultiProposal} from "../src/FutarchyMultiProposal.sol";
 import {FutarchyMultiRealityProxy} from "../src/FutarchyMultiRealityProxy.sol";
-import {FutarchyMultiRouter} from "../src/FutarchyMultiRouter.sol";
+import {FutarchyMultiRouter, IProposalRegistry} from "../src/FutarchyMultiRouter.sol";
 
 contract MockERC20 {
     string public name;
@@ -46,6 +46,37 @@ contract MockERC20 {
     }
 }
 
+/// A made-up proposal that copies a real one's answers, as an attacker would deploy.
+contract FakeProposal {
+    FutarchyMultiProposal immutable real;
+    IERC20 immutable collateral;
+
+    constructor(FutarchyMultiProposal _real, IERC20 _collateral) {
+        real = _real;
+        collateral = _collateral;
+    }
+
+    function numOutcomes() external view returns (uint256) {
+        return real.numOutcomes();
+    }
+
+    function collateralIndex(IERC20) external pure returns (uint256) {
+        return 1;
+    }
+
+    function parentCollectionId() external pure returns (bytes32) {
+        return bytes32(0);
+    }
+
+    function conditionId() external view returns (bytes32) {
+        return real.conditionId();
+    }
+
+    function wrappedOutcome(uint256 index) external view returns (IERC20, bytes memory) {
+        return real.wrappedOutcome(index);
+    }
+}
+
 /// Runs against the same ConditionalTokens, Wrapped1155Factory and Reality.eth v3 bytecode that is
 /// deployed on Robinhood Chain (creation code read from ./bytecode).
 contract FutarchyMultiTest is Test {
@@ -81,7 +112,7 @@ contract FutarchyMultiTest is Test {
         reality = IRealityETH_v3_0(deployHex("bytecode/reality.hex"));
         proxy = new FutarchyMultiRealityProxy(ct, reality);
         factory = new FutarchyMultiFactory(ARBITRATOR, reality, w1155, ct, proxy, TIMEOUT);
-        router = new FutarchyMultiRouter(ct, w1155);
+        router = new FutarchyMultiRouter(ct, w1155, IProposalRegistry(address(factory)));
         nvda = new MockERC20("NVDA", 18);
         usdg = new MockERC20("USDG", 6);
         nvda.mint(ALICE, 10 ether);
@@ -321,6 +352,7 @@ contract FutarchyMultiTest is Test {
         factory.createProposal(p);
 
         p = topParams();
+        p.marketName = "another question";
         p.outcomeSymbols[0] = "A_SYMBOL_THAT_IS_FAR_TOO_LONG_FOR_IT";
         vm.expectRevert("token name too long");
         factory.createProposal(p);
@@ -331,6 +363,92 @@ contract FutarchyMultiTest is Test {
         MockERC20 dai = new MockERC20("DAI", 18);
         vm.expectRevert("not a collateral of this proposal");
         router.splitPosition(a, IERC20(address(dai)), 1);
+    }
+
+    function test_create_rejectsTextThatWouldChangeTheQuestion() public {
+        FutarchyMultiFactory.CreateProposalParams memory p = topParams();
+        p.outcomes[0] = 'Yes","No'; // would show three options for a two-option condition
+        vm.expectRevert("text has a forbidden character");
+        factory.createProposal(p);
+
+        p = topParams();
+        p.marketName = 'Who is "next"?';
+        vm.expectRevert("text has a forbidden character");
+        factory.createProposal(p);
+
+        p = topParams();
+        p.outcomes[1] = "Rene\\Haas";
+        vm.expectRevert("text has a forbidden character");
+        factory.createProposal(p);
+
+        p = topParams();
+        p.category = "business\nx";
+        vm.expectRevert("text has a forbidden character");
+        factory.createProposal(p);
+
+        p = topParams();
+        p.outcomes[2] = unicode"Johny␟Srouji";
+        vm.expectRevert("text has the field separator");
+        factory.createProposal(p);
+
+        // Other non-ASCII text is fine.
+        p = topParams();
+        p.outcomes[2] = unicode"José Müller – 黄";
+        factory.createProposal(p);
+    }
+
+    function test_create_rejectsSecondMarketOnTheSameQuestion() public {
+        factory.createProposal(topParams());
+        FutarchyMultiFactory.CreateProposalParams memory p = topParams();
+        p.outcomeSymbols[0] = "BUCK2"; // same question, different token names
+        vm.expectRevert("a market already exists for this question");
+        factory.createProposal(p);
+    }
+
+    function test_router_rejectsProposalNotFromFactory() public {
+        FutarchyMultiProposal real = FutarchyMultiProposal(factory.createProposal(topParams()));
+        split(real, usdg, 10e6);
+        // Tokens sent to the router by mistake must not be reachable through a made-up proposal.
+        IERC20 stray = token(real, usdg, 0);
+        vm.prank(ALICE);
+        stray.transfer(address(router), 10e6);
+
+        FakeProposal fake = new FakeProposal(real, IERC20(address(usdg)));
+        vm.expectRevert("unknown proposal");
+        router.splitPosition(FutarchyMultiProposal(address(fake)), IERC20(address(usdg)), 1);
+        vm.expectRevert("unknown proposal");
+        router.mergePositions(FutarchyMultiProposal(address(fake)), IERC20(address(usdg)), 1);
+        vm.expectRevert("unknown proposal");
+        router.redeemPositions(FutarchyMultiProposal(address(fake)), IERC20(address(usdg)), 0, 1);
+        assertEq(token(real, usdg, 0).balanceOf(address(router)), 10e6);
+    }
+
+    function test_sixteenOptions_createSplitMergeFitInABlock() public {
+        FutarchyMultiFactory.CreateProposalParams memory p = topParams();
+        p.marketName = "sixteen";
+        p.outcomes = new string[](16);
+        p.outcomeSymbols = new string[](16);
+        for (uint256 i = 0; i < 16; i++) {
+            p.outcomes[i] = string(abi.encodePacked("Option ", vm.toString(i)));
+            p.outcomeSymbols[i] = string(abi.encodePacked("OPT", vm.toString(i)));
+        }
+        uint256 g = gasleft();
+        FutarchyMultiProposal m = FutarchyMultiProposal(factory.createProposal(p));
+        uint256 createGas = g - gasleft();
+        g = gasleft();
+        split(m, usdg, 1e6);
+        uint256 splitGas = g - gasleft();
+        merge(m, usdg, 1e6);
+        emit log_named_uint("create gas, 16 options", createGas);
+        emit log_named_uint("split gas, 16 options", splitGas);
+        assertLt(createGas, 16_000_000);
+        assertLt(splitGas, 6_000_000);
+        assertEq(usdg.balanceOf(ALICE), 1_000e6);
+
+        p.outcomes = new string[](17);
+        p.outcomeSymbols = new string[](17);
+        vm.expectRevert("2 to 16 options");
+        factory.createProposal(p);
     }
 
     function test_threeLevels_otherSplitTwice() public {

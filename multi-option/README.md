@@ -38,6 +38,27 @@ If a candidate of the second list wins, the first question resolves to "Other" a
 holder redeems through both levels. If a candidate of the first list wins, every token of the second list is worth
 nothing, whatever the second question says.
 
+## Limits and rules the contracts enforce
+
+- **2 to 16 options** per market. Creating a 16-option market costs about 12M gas; splitting costs about 3M.
+- **Option names, the market name, category and language** may not contain a double quote, a backslash, control
+  characters or the Reality.eth field separator (U+241F). Any of these would let a creator add or hide options in the
+  question that answerers see.
+- **One market per Reality.eth question.** A second market with the same question, options, opening time and bond is
+  rejected, so a question's positions have exactly one set of tokens.
+- **The router only accepts markets created by the factory.**
+- **An invalid answer pays the catch-all.** Answering "invalid" on Reality.eth is in effect answering "Other".
+
+Non-standard collateral is not supported: tokens that return nothing from `transfer` or `approve`, or that take a fee
+on transfer, make split and merge revert (no funds are lost).
+
+## Review
+
+An adversarial review on 2026-11-14 (a second agent, read-only, with its own attack tests) found no way to take
+funds that belong to others or to resolve a market wrongly or early. It confirmed that option names were not escaped
+and that tokens sent to the router by mistake could be taken through a made-up proposal; both are fixed and tested
+here, along with the option cap and the one-market-per-question rule. This is not an audit.
+
 ## Contracts
 
 | File | Role |
@@ -57,5 +78,6 @@ forge test
 The tests deploy ConditionalTokens, Wrapped1155Factory and Reality.eth v3 from the creation bytecode in `bytecode/`
 (the bytecode verified on Ethereum mainnet and deployed on Robinhood Chain), so they run against the real base
 contracts without a fork. They cover split and merge for both collaterals, dividing the catch-all once and twice,
-redeeming through two and three levels, a named candidate winning, invalid and out-of-range answers, and the
-factory's and router's input checks.
+redeeming through two and three levels, a named candidate winning, invalid and out-of-range answers, text that
+would change the question, duplicate markets, made-up proposals, 16 options, and the factory's and router's input
+checks.

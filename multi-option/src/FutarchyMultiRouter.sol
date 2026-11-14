@@ -4,20 +4,40 @@ pragma solidity 0.8.20;
 import {IConditionalTokens, IERC20, IWrapped1155Factory} from "./Interfaces.sol";
 import {FutarchyMultiProposal} from "./FutarchyMultiProposal.sol";
 
+interface IProposalRegistry {
+    function isProposal(address proposal) external view returns (bool);
+}
+
 /// @notice Split, merge and redeem the outcome tokens of multi-option proposals. Adapted from Seer's
 /// FutarchyRouter (two outcomes). For a nested proposal the "collateral" side of each operation is the
 /// parent option's wrapped token instead of the collateral token itself.
 contract FutarchyMultiRouter {
     IConditionalTokens public immutable conditionalTokens;
     IWrapped1155Factory public immutable wrapped1155Factory;
+    IProposalRegistry public immutable factory;
 
-    constructor(IConditionalTokens _conditionalTokens, IWrapped1155Factory _wrapped1155Factory) {
+    constructor(
+        IConditionalTokens _conditionalTokens,
+        IWrapped1155Factory _wrapped1155Factory,
+        IProposalRegistry _factory
+    ) {
         conditionalTokens = _conditionalTokens;
         wrapped1155Factory = _wrapped1155Factory;
+        factory = _factory;
+    }
+
+    /// @dev The router trusts the proposal's view functions (tokens, ids, collaterals). Only proposals
+    /// created by the factory are accepted, so a made-up proposal cannot point it at other tokens.
+    modifier onlyFactoryProposal(FutarchyMultiProposal proposal) {
+        require(factory.isProposal(address(proposal)), "unknown proposal");
+        _;
     }
 
     /// @notice Turn `amount` of collateral (or of the parent option's token) into `amount` of every option's token.
-    function splitPosition(FutarchyMultiProposal proposal, IERC20 collateralToken, uint256 amount) external {
+    function splitPosition(FutarchyMultiProposal proposal, IERC20 collateralToken, uint256 amount)
+        external
+        onlyFactoryProposal(proposal)
+    {
         uint256 n = proposal.numOutcomes();
         uint256 offset = proposal.collateralIndex(collateralToken) * n;
         bytes32 parentCollectionId = proposal.parentCollectionId();
@@ -48,7 +68,10 @@ contract FutarchyMultiRouter {
     }
 
     /// @notice Turn `amount` of every option's token back into `amount` of collateral (or of the parent option's token).
-    function mergePositions(FutarchyMultiProposal proposal, IERC20 collateralToken, uint256 amount) external {
+    function mergePositions(FutarchyMultiProposal proposal, IERC20 collateralToken, uint256 amount)
+        external
+        onlyFactoryProposal(proposal)
+    {
         uint256 n = proposal.numOutcomes();
         uint256 offset = proposal.collateralIndex(collateralToken) * n;
         bytes32 parentCollectionId = proposal.parentCollectionId();
@@ -79,6 +102,7 @@ contract FutarchyMultiRouter {
     /// collateral (or the parent option's token, for a nested proposal); a losing one returns nothing.
     function redeemPositions(FutarchyMultiProposal proposal, IERC20 collateralToken, uint256 outcome, uint256 amount)
         external
+        onlyFactoryProposal(proposal)
     {
         uint256 n = proposal.numOutcomes();
         require(outcome < n, "outcome out of range");
