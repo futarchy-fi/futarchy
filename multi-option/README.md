@@ -41,11 +41,11 @@ nothing, whatever the second question says.
 ## Limits and rules the contracts enforce
 
 - **2 to 16 options** per market. Creating a 16-option market costs about 12M gas; splitting costs about 3M.
-- **Option names, the market name, category and language** may not contain a double quote, a backslash, control
-  characters or the Reality.eth field separator (U+241F). Any of these would let a creator add or hide options in the
-  question that answerers see.
-- **One market per Reality.eth question.** A second market with the same question, options, opening time and bond is
-  rejected, so a question's positions have exactly one set of tokens.
+- **Option names, the market name, category and language** must be printable ASCII without double quotes or
+  backslashes. Anything else could add or hide options in the question that answerers see, or make it undecodable.
+- **Option symbols** are A-Z, 0-9 and underscore.
+- **One market per question and creator.** The creator's address is part of the Reality.eth question id, so nobody
+  else can register a market's question first, and the same creator cannot create it twice.
 - **The router only accepts markets created by the factory.**
 - **An invalid answer pays the catch-all.** Answering "invalid" on Reality.eth is in effect answering "Other".
 
@@ -54,10 +54,11 @@ on transfer, make split and merge revert (no funds are lost).
 
 ## Review
 
-An adversarial review on 2026-11-14 (a second agent, read-only, with its own attack tests) found no way to take
-funds that belong to others or to resolve a market wrongly or early. It confirmed that option names were not escaped
-and that tokens sent to the router by mistake could be taken through a made-up proposal; both are fixed and tested
-here, along with the option cap and the one-market-per-question rule. This is not an audit.
+Two rounds of adversarial review on 2026-11-14 (a second agent, read-only, with its own attack tests) found no way
+to take funds that belong to others or to resolve a market wrongly or early. The first round confirmed that option
+names were not escaped and that tokens sent to the router by mistake could be taken through a made-up proposal. The
+second confirmed that another account could register a market's question first, and that undecodable text was
+accepted. All four are fixed and tested here. This is not an audit.
 
 ## Contracts
 

@@ -81,6 +81,7 @@ contract FutarchyMultiFactory {
         requireSafeText(p.lang);
         for (uint256 i = 0; i < n; i++) {
             requireSafeText(p.outcomes[i]);
+            requireSymbol(p.outcomeSymbols[i]);
         }
 
         FutarchyMultiProposal.Params memory params;
@@ -124,16 +125,24 @@ contract FutarchyMultiFactory {
         return address(instance);
     }
 
-    /// @dev Rejects characters that would change the structure of the encoded question: double quote,
-    /// backslash, control characters and the separator U+241F (bytes E2 90 9F).
+    /// @dev Printable ASCII only, without double quote or backslash. Anything else could change the
+    /// structure of the encoded question (quotes, the U+241F field separator) or make it undecodable
+    /// (invalid UTF-8).
     function requireSafeText(string memory text) internal pure {
         bytes memory b = bytes(text);
         for (uint256 i = 0; i < b.length; i++) {
             bytes1 c = b[i];
-            require(c >= 0x20 && c != 0x22 && c != 0x5c && c != 0x7f, "text has a forbidden character");
-            if (c == 0xe2 && i + 2 < b.length) {
-                require(!(b[i + 1] == 0x90 && b[i + 2] == 0x9f), "text has the field separator");
-            }
+            require(c >= 0x20 && c <= 0x7e && c != 0x22 && c != 0x5c, "text has a forbidden character");
+        }
+    }
+
+    /// @dev Token symbols: 1 or more of A-Z, 0-9 and underscore.
+    function requireSymbol(string memory symbol) internal pure {
+        bytes memory b = bytes(symbol);
+        require(b.length != 0, "empty option symbol");
+        for (uint256 i = 0; i < b.length; i++) {
+            bytes1 c = b[i];
+            require((c >= 0x41 && c <= 0x5a) || (c >= 0x30 && c <= 0x39) || c == 0x5f, "symbol must be A-Z, 0-9 or _");
         }
     }
 
@@ -153,15 +162,18 @@ contract FutarchyMultiFactory {
         return string(abi.encodePacked(question, separator, list, separator, category, separator, lang));
     }
 
+    /// @dev The creator's address is the Reality.eth nonce, so the question id is unique to the creator:
+    /// nobody else can register a market's question first to block it.
     function askRealityQuestion(string memory encodedQuestion, uint32 openingTime, uint256 minBond)
         internal
         returns (bytes32)
     {
+        uint256 nonce = uint256(uint160(msg.sender));
         bytes32 contentHash =
             keccak256(abi.encodePacked(uint256(REALITY_SINGLE_SELECT_TEMPLATE), openingTime, encodedQuestion));
         bytes32 questionId = keccak256(
             abi.encodePacked(
-                contentHash, arbitrator, questionTimeout, minBond, address(realitio), address(this), uint256(0)
+                contentHash, arbitrator, questionTimeout, minBond, address(realitio), address(this), nonce
             )
         );
 
@@ -171,7 +183,7 @@ contract FutarchyMultiFactory {
         }
 
         return realitio.askQuestionWithMinBond(
-            REALITY_SINGLE_SELECT_TEMPLATE, encodedQuestion, arbitrator, questionTimeout, openingTime, 0, minBond
+            REALITY_SINGLE_SELECT_TEMPLATE, encodedQuestion, arbitrator, questionTimeout, openingTime, nonce, minBond
         );
     }
 
@@ -197,7 +209,6 @@ contract FutarchyMultiFactory {
             uint8 decimals = collateral.decimals();
 
             for (uint256 i = 0; i < n; i++) {
-                require(bytes(symbols[i]).length != 0, "empty option symbol");
                 bytes32 collectionId =
                     conditionalTokens.getCollectionId(params.parentCollectionId, params.conditionId, 1 << i);
                 uint256 tokenId = conditionalTokens.getPositionId(address(collateral), collectionId);

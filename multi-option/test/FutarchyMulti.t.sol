@@ -388,13 +388,39 @@ contract FutarchyMultiTest is Test {
 
         p = topParams();
         p.outcomes[2] = unicode"Johny␟Srouji";
-        vm.expectRevert("text has the field separator");
+        vm.expectRevert("text has a forbidden character");
         factory.createProposal(p);
 
-        // Other non-ASCII text is fine.
+        // A cut-off multi-byte sequence would make the question undecodable.
         p = topParams();
-        p.outcomes[2] = unicode"José Müller – 黄";
+        p.outcomes[2] = string(abi.encodePacked(bytes1(0x41), bytes1(0xe2), bytes1(0x90)));
+        vm.expectRevert("text has a forbidden character");
         factory.createProposal(p);
+
+        p = topParams();
+        p.outcomeSymbols[0] = 'BU"CK';
+        vm.expectRevert("symbol must be A-Z, 0-9 or _");
+        factory.createProposal(p);
+
+        p = topParams();
+        p.outcomeSymbols[0] = "";
+        vm.expectRevert("empty option symbol");
+        factory.createProposal(p);
+    }
+
+    function test_create_anotherAccountCannotTakeTheQuestionFirst() public {
+        // A squatter sends the identical question with junk collaterals before us.
+        FutarchyMultiFactory.CreateProposalParams memory junk = topParams();
+        junk.collateralToken1 = IERC20(address(new MockERC20("JUNK", 18)));
+        vm.prank(address(0xBAD));
+        FutarchyMultiProposal squat = FutarchyMultiProposal(factory.createProposal(junk));
+
+        FutarchyMultiProposal ours = FutarchyMultiProposal(factory.createProposal(topParams()));
+        assertTrue(ours.questionId() != squat.questionId());
+        assertTrue(ours.conditionId() != squat.conditionId());
+        split(ours, usdg, 10e6);
+        merge(ours, usdg, 10e6);
+        assertEq(usdg.balanceOf(ALICE), 1_000e6);
     }
 
     function test_create_rejectsSecondMarketOnTheSameQuestion() public {
