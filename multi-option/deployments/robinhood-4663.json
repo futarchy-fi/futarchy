@@ -1,0 +1,89 @@
+{
+  "chainId": 4663,
+  "chain": "Robinhood Chain",
+  "explorer": "https://robinhoodchain.blockscout.com",
+  "source": "multi-option/ at commit 2df9ea5",
+  "compiler": "solc 0.8.20, evm paris, optimizer 200 runs",
+  "verification": "Sourcify exact match",
+  "audited": false,
+  "base": {
+    "ConditionalTokens": "0x3aee58842a1d76c50f36eb5a34e79ef958d082c7",
+    "Wrapped1155Factory": "0x9d0bb3418b1834e40bd106c0dbb9318cdc847468",
+    "RealityETH_v3_0": "0x13279f59e694369e1d591e95b08a3107b8520ed3"
+  },
+  "contracts": {
+    "FutarchyMultiRealityProxy": "0x06dA5587c032c411033876F39306bcbA06a80D27",
+    "FutarchyMultiFactory": "0x61220A7209A871b3e3980d701125bCBEde59deA6",
+    "FutarchyMultiRouter": "0xc4F061Af9892fc165D0Fd7b67c008674505be5bD"
+  },
+  "arbitrator": {
+    "address": "0xb03B5e6d1a8138be9770443a24A01b37Fca8C2f7",
+    "type": "2-of-3 Safe"
+  },
+  "deployedAt": "2026-11-14",
+  "markets": {
+    "NVDA next CEO (2026-11-14)": {
+      "proposal": "0x36dF9e82479D1B172277dD99269C88B04E68F9A7",
+      "questionId": "0x78f088a6832ea02c13ccb798b37820ea91cdada4bf39139055b47af2726429d6",
+      "conditionId": "0xceeb342252f7c427c34ed7ad062c30673d793ca3f44096d3e69919ec6cc97e46",
+      "createdBlock": 113804658,
+      "openingTime": 1794620223,
+      "deadline": "2027-01-01T05:00:00Z",
+      "options": [
+        "BUCK",
+        "HAAS",
+        "SROUJI",
+        "KRESS",
+        "JENSEN",
+        "NONE",
+        "OTHER"
+      ],
+      "optionNames": [
+        "Ian Buck",
+        "Rene Haas",
+        "Johny Srouji",
+        "Colette Kress",
+        "Jensen Huang reinstated",
+        "No successor by Jan 1",
+        "Other"
+      ],
+      "pricePools": {
+        "BUCK": "0x9DDfF7eDf1aa655e0442cF075BDA15B42Af17e63",
+        "HAAS": "0x1c0472D6360985c0fdb56c0E3CC8f45fb4f29105",
+        "SROUJI": "0x3C059789B4E7B95d2a47eDD7cf836aa9480431A6",
+        "KRESS": "0x3F13740430088Ba869abf791aF7A5EFEbcBFC340",
+        "JENSEN": "0x293CE092663A20687F572Ec364BA8624f08cdCD0",
+        "NONE": "0xa7bC4051264ED80A6C729ffAFcA295553A2cE6AC",
+        "OTHER": "0x18e30bd1912ce5ffed8F524B9B897e5Fa43384eE"
+      },
+      "probabilityPools": {
+        "BUCK": "0xB9f74C28CCdff194A9f1B8eFB1C5A6fEd0715AB8",
+        "HAAS": "0x805C2dBBF5cf629E15D16b8c1b483026De66e1F7",
+        "SROUJI": "0xA1393ca31e428A489eba8D3f66Fd026A8Db4a9a2",
+        "KRESS": "0x7d95947C1a9395e540A6F679d7D54E515e80843E",
+        "JENSEN": "0x525Ed30e4bB515BA76E59F2062F4A9C3D597e312",
+        "NONE": "0x32DafbFa19D6381d6D904998953dD0A5048a1656",
+        "OTHER": "0x9082eDcA208Ce10dA922C0A0252F3063C3C48aFA"
+      },
+      "positions": {
+        "price:BUCK": "1590240",
+        "price:HAAS": "1590241",
+        "price:SROUJI": "1590242",
+        "price:KRESS": "1590243",
+        "price:JENSEN": "1590244",
+        "price:NONE": "1590245",
+        "price:OTHER": "1590257",
+        "prob:BUCK": "1590259",
+        "prob:HAAS": "1590260",
+        "prob:SROUJI": "1590261",
+        "prob:KRESS": "1590270",
+        "prob:JENSEN": "1590271",
+        "prob:NONE": "1590272",
+        "prob:OTHER": "1590273"
+      },
+      "stateFile": "rh/multi-market.json",
+      "setup": "rh/multi-setup.mjs",
+      "verify": "rh/multi-verify.mjs"
+    }
+  }
+}

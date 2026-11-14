@@ -69,6 +69,15 @@ accepted. All four are fixed and tested here. This is not an audit.
 | `src/FutarchyMultiRouter.sol` | split, merge, redeem (collateral or parent tokens) |
 | `src/FutarchyMultiRealityProxy.sol` | reports the final Reality.eth answer to ConditionalTokens |
 
+## Deployments
+
+| Chain | Factory | Router | Reality proxy |
+|---|---|---|---|
+| Robinhood Chain (4663) | `0x61220A7209A871b3e3980d701125bCBEde59deA6` | `0xc4F061Af9892fc165D0Fd7b67c008674505be5bD` | `0x06dA5587c032c411033876F39306bcbA06a80D27` |
+
+Addresses, the arbitrator and the markets created so far are in `deployments/robinhood-4663.json`. The contracts
+are verified on Sourcify (exact match).
+
 ## Tests
 
 ```
