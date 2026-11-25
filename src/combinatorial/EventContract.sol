@@ -19,6 +19,8 @@ contract EventContract {
 
     uint256 private nextEventId = 1;
     mapping(uint256 => Event) public events;
+    /// @dev Event id for each (oracle, questionId) pair; the pair is unique
+    mapping(bytes32 => uint256) private eventIdByQuestion;
 
     event EventCreated(uint256 indexed eventId, address indexed oracle, bytes32 indexed questionId);
 
@@ -41,6 +43,7 @@ contract EventContract {
     error InvalidPayoutCount();
     error InvalidPayoutSum();
     error LengthMismatch();
+    error EventAlreadyExists(uint256 eventId);
 
     /**
      * @notice Creates a new event
@@ -51,7 +54,12 @@ contract EventContract {
     function createEvent(address oracle, bytes32 questionId) public returns (uint256 eventId) {
         if (oracle == address(0)) revert InvalidOracle(oracle);
 
+        // One event per (oracle, questionId), so reportPayouts always reaches the right one
+        bytes32 key = _questionKey(oracle, questionId);
+        if (eventIdByQuestion[key] != 0) revert EventAlreadyExists(eventIdByQuestion[key]);
+
         eventId = nextEventId++;
+        eventIdByQuestion[key] = eventId;
         events[eventId] =
             Event({ eventId: eventId, oracle: oracle, questionId: questionId, outcome: 0, isSettled: false });
 
@@ -79,7 +87,7 @@ contract EventContract {
      * @param outcome The outcome value between 0 and SCALE (1e18)
      */
     function settleEvent(uint256 eventId, uint256 outcome) public {
-        if (eventId >= nextEventId) revert EventDoesNotExist(eventId);
+        if (!_exists(eventId)) revert EventDoesNotExist(eventId);
         if (outcome > SCALE) revert InvalidOutcome(outcome);
 
         Event storage evt = events[eventId];
@@ -149,13 +157,9 @@ contract EventContract {
      * @return eventId The ID of the found event
      */
     function findEvent(address oracle, bytes32 questionId) public view returns (uint256) {
-        for (uint256 i = 1; i < nextEventId; i++) {
-            Event storage evt = events[i];
-            if (evt.oracle == oracle && evt.questionId == questionId) {
-                return i;
-            }
-        }
-        revert EventDoesNotExist(0);
+        uint256 eventId = eventIdByQuestion[_questionKey(oracle, questionId)];
+        if (eventId == 0) revert EventDoesNotExist(0);
+        return eventId;
     }
 
     /**
@@ -171,7 +175,7 @@ contract EventContract {
         view
         returns (bool isSettled, uint256 outcome, address oracle, bytes32 questionId)
     {
-        if (eventId >= nextEventId) revert EventDoesNotExist(eventId);
+        if (!_exists(eventId)) revert EventDoesNotExist(eventId);
 
         Event storage evt = events[eventId];
         return (evt.isSettled, evt.outcome, evt.oracle, evt.questionId);
@@ -220,7 +224,7 @@ contract EventContract {
 
         for (uint256 i = 0; i < length; i++) {
             uint256 eventId = eventIds[i];
-            if (eventId >= nextEventId) {
+            if (!_exists(eventId)) {
                 statuses[i] = false;
                 outcomes[i] = 0;
             } else {
@@ -239,10 +243,18 @@ contract EventContract {
     function areEventsSettled(uint256[] calldata eventIds) external view returns (bool allSettled) {
         for (uint256 i = 0; i < eventIds.length; i++) {
             uint256 eventId = eventIds[i];
-            if (eventId >= nextEventId || !events[eventId].isSettled) {
+            if (!_exists(eventId) || !events[eventId].isSettled) {
                 return false;
             }
         }
         return true;
+    }
+
+    function _exists(uint256 eventId) private view returns (bool) {
+        return eventId != 0 && eventId < nextEventId;
+    }
+
+    function _questionKey(address oracle, bytes32 questionId) private pure returns (bytes32) {
+        return keccak256(abi.encode(oracle, questionId));
     }
 }

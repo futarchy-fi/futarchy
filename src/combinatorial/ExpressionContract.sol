@@ -7,13 +7,18 @@ import "./ExpressionEvaluatorLib.sol";
 /**
  * @title ExpressionContract
  * @notice Manages logical expressions in DNF form with evaluation capabilities
+ * @dev Every stored expression is in canonical form (see CanonicalFormLib) and its conjunctions are pairwise
+ *      mutually exclusive: no two of them can be true together. That is what makes the value of an expression
+ *      the plain sum of its conjunctions' values, also when events settle at a fraction. "X or Y" is therefore
+ *      stored as "X" plus "not X and Y" (value x + (1 - x) * y), never as "X" plus "Y".
  */
 contract ExpressionContract {
     using CanonicalFormLib for uint256[][];
     using ExpressionEvaluatorLib for uint256[][];
 
-    uint256 private constant MAX_LITERALS = 256;
-    uint256 private constant MAX_CONJUNCTIONS = 1024;
+    uint256 private constant MAX_LITERALS = ExpressionEvaluatorLib.MAX_LITERALS;
+    uint256 private constant MAX_CONJUNCTIONS = ExpressionEvaluatorLib.MAX_CONJUNCTIONS;
+    uint256 private constant NEGATION_BIT = 1 << 255;
 
     error ExpressionDoesNotExist(uint256 expressionId);
     error InvalidLiteral();
@@ -21,6 +26,11 @@ contract ExpressionContract {
     error InvalidBooleanValue(uint256 value);
     error LengthMismatch();
     error ExpressionsCannotBeMerged();
+    error InvalidVariable(uint256 variable);
+    /// @notice The two expressions can be true together, so their OR cannot be stored as a plain union
+    error ExpressionsOverlap(uint256 exprId1, uint256 exprId2);
+    /// @notice Two conjunctions of the expression being created can be true together
+    error ConjunctionsNotExclusive(uint256 firstIndex, uint256 secondIndex);
 
     uint256 public constant SCALE = 1e18;
 
@@ -50,11 +60,11 @@ contract ExpressionContract {
      * @notice Creates a literal expression
      */
     function createLiteralExpression(int256 literal) public returns (uint256) {
-        if (literal == 0) revert InvalidLiteral();
+        if (literal == 0 || literal == type(int256).min) revert InvalidLiteral();
 
         uint256[][] memory conj = new uint256[][](1);
         conj[0] = new uint256[](1);
-        conj[0][0] = literal > 0 ? uint256(literal) : (uint256(-literal) | (1 << 255));
+        conj[0][0] = literal > 0 ? uint256(literal) : (uint256(-literal) | NEGATION_BIT);
 
         return _createExpression(conj);
     }
@@ -78,53 +88,51 @@ contract ExpressionContract {
     }
 
     /**
-     * @notice Combines expressions with OR
+     * @notice Returns the conjunctions of an expression in canonical form
+     */
+    function getConjunctions(uint256 expressionId) external view returns (uint256[][] memory) {
+        return _getExpression(expressionId).conjunctions;
+    }
+
+    /**
+     * @notice Combines two expressions that cannot be true together with OR
+     * @dev Reverts with ExpressionsOverlap when some conjunction of one can be true together with some
+     *      conjunction of the other. To OR overlapping expressions, first split one of them so that the parts
+     *      are exclusive, for example "X or Y" as "X" plus "not X and Y".
      */
     function orExpressions(uint256 exprId1, uint256 exprId2) public returns (uint256) {
-        Expression storage expr1 = _getExpression(exprId1);
-        Expression storage expr2 = _getExpression(exprId2);
-
-        if (expr1.conjunctions.length + expr2.conjunctions.length > MAX_CONJUNCTIONS) {
-            revert ExpressionTooLarge();
-        }
-
-        uint256[][] memory combined = new uint256[][](expr1.conjunctions.length + expr2.conjunctions.length);
-
-        for (uint256 i = 0; i < expr1.conjunctions.length; i++) {
-            combined[i] = expr1.conjunctions[i];
-        }
-        for (uint256 i = 0; i < expr2.conjunctions.length; i++) {
-            combined[expr1.conjunctions.length + i] = expr2.conjunctions[i];
-        }
-
-        return _createExpression(combined);
+        return _exclusiveUnion(exprId1, exprId2);
     }
 
     /**
      * @notice Combines expressions with AND
+     * @dev Pairs of conjunctions that contradict each other drop out. The result keeps the conjunctions
+     *      pairwise exclusive because both inputs have them so.
      */
     function andExpressions(uint256 exprId1, uint256 exprId2) public returns (uint256) {
         Expression storage expr1 = _getExpression(exprId1);
         Expression storage expr2 = _getExpression(exprId2);
 
-        if (expr1.conjunctions.length * expr2.conjunctions.length > MAX_CONJUNCTIONS) {
+        uint256 count1 = expr1.conjunctions.length;
+        uint256 count2 = expr2.conjunctions.length;
+        if (count1 * count2 > MAX_CONJUNCTIONS) {
             revert ExpressionTooLarge();
         }
 
-        uint256[][] memory combined = new uint256[][](expr1.conjunctions.length * expr2.conjunctions.length);
+        uint256[][] memory combined = new uint256[][](count1 * count2);
         uint256 index = 0;
 
-        for (uint256 i = 0; i < expr1.conjunctions.length; i++) {
-            for (uint256 j = 0; j < expr2.conjunctions.length; j++) {
-                uint256 newSize = expr1.conjunctions[i].length + expr2.conjunctions[j].length;
-                if (newSize > MAX_LITERALS) revert ExpressionTooLarge();
+        for (uint256 i = 0; i < count1; i++) {
+            uint256[] memory conj1 = expr1.conjunctions[i];
+            for (uint256 j = 0; j < count2; j++) {
+                uint256[] memory conj2 = expr2.conjunctions[j];
 
-                uint256[] memory literals = new uint256[](newSize);
-                for (uint256 k = 0; k < expr1.conjunctions[i].length; k++) {
-                    literals[k] = expr1.conjunctions[i][k];
+                uint256[] memory literals = new uint256[](conj1.length + conj2.length);
+                for (uint256 k = 0; k < conj1.length; k++) {
+                    literals[k] = conj1[k];
                 }
-                for (uint256 k = 0; k < expr2.conjunctions[j].length; k++) {
-                    literals[expr1.conjunctions[i].length + k] = expr2.conjunctions[j][k];
+                for (uint256 k = 0; k < conj2.length; k++) {
+                    literals[conj1.length + k] = conj2[k];
                 }
 
                 combined[index++] = literals;
@@ -145,13 +153,10 @@ contract ExpressionContract {
         public
         returns (uint256 withVar, uint256 withNotVar)
     {
+        _requireVariable(variable);
+
         Expression storage expr = _getExpression(expressionId);
         uint256 numConjunctions = expr.conjunctions.length;
-
-        // Check if the number of conjunctions exceeds MAX_CONJUNCTIONS
-        if (numConjunctions > MAX_CONJUNCTIONS) {
-            revert ExpressionTooLarge();
-        }
 
         // Initialize arrays for new expressions
         uint256[][] memory conjWithVar = new uint256[][](numConjunctions);
@@ -159,11 +164,6 @@ contract ExpressionContract {
 
         for (uint256 i = 0; i < numConjunctions; i++) {
             uint256 origConjLength = expr.conjunctions[i].length;
-
-            // Check if adding the variable would exceed MAX_LITERALS
-            if (origConjLength + 1 > MAX_LITERALS) {
-                revert ExpressionTooLarge();
-            }
 
             // Create new conjunctions with added variable
             uint256[] memory newConjWithVar = new uint256[](origConjLength + 1);
@@ -177,13 +177,13 @@ contract ExpressionContract {
 
             // Add variable and its negation
             newConjWithVar[origConjLength] = variable;
-            newConjWithNotVar[origConjLength] = variable | (1 << 255);
+            newConjWithNotVar[origConjLength] = variable | NEGATION_BIT;
 
             conjWithVar[i] = newConjWithVar;
             conjWithNotVar[i] = newConjWithNotVar;
         }
 
-        // Create new expressions, ensuring they don't exceed MAX_CONJUNCTIONS
+        // Conjunctions that already contain the opposite literal are contradictions and drop out
         withVar = _createExpression(conjWithVar);
         withNotVar = _createExpression(conjWithNotVar);
     }
@@ -206,11 +206,6 @@ contract ExpressionContract {
         // Create the expression with the remaining conjunctions
         uint256 remainingConjLength = expr.conjunctions.length - 1;
 
-        // Ensure we don't exceed MAX_CONJUNCTIONS
-        if (remainingConjLength > MAX_CONJUNCTIONS) {
-            revert ExpressionTooLarge();
-        }
-
         uint256[][] memory remainingConj = new uint256[][](remainingConjLength);
         uint256 index = 0;
         for (uint256 i = 0; i < expr.conjunctions.length; i++) {
@@ -225,12 +220,17 @@ contract ExpressionContract {
         public
         returns (uint256 mergedExprId)
     {
+        _requireVariable(variable);
+
         Expression storage exprWithVar = _getExpression(exprWithVarId);
         Expression storage exprWithNotVar = _getExpression(exprWithNotVarId);
 
-        // Strip the variable from both expressions
-        uint256[][] memory strippedConj1 = stripVariableFromConjunctions(exprWithVar.conjunctions, variable, false);
-        uint256[][] memory strippedConj2 = stripVariableFromConjunctions(exprWithNotVar.conjunctions, variable, true);
+        // Strip the variable from both expressions. Removing a literal can change the order of the
+        // conjunctions, so both sides go back to canonical form before they are compared.
+        uint256[][] memory strippedConj1 =
+            stripVariableFromConjunctions(exprWithVar.conjunctions, variable, false).canonicalizeExpression();
+        uint256[][] memory strippedConj2 =
+            stripVariableFromConjunctions(exprWithNotVar.conjunctions, variable, true).canonicalizeExpression();
 
         // Compute hashes to compare the stripped expressions
         bytes32 hash1 = strippedConj1.computeExpressionHash();
@@ -259,8 +259,8 @@ contract ExpressionContract {
 
             for (uint256 j = 0; j < conj.length; j++) {
                 uint256 lit = conj[j];
-                uint256 varId = lit & ((1 << 255) - 1);
-                bool litIsNegated = (lit & (1 << 255)) != 0;
+                uint256 varId = lit & (NEGATION_BIT - 1);
+                bool litIsNegated = (lit & NEGATION_BIT) != 0;
 
                 if (varId == variable && litIsNegated == isNegated) {
                     foundVar = true;
@@ -285,30 +285,12 @@ contract ExpressionContract {
         }
     }
 
+    /**
+     * @notice Merges two expressions that cannot be true together into their OR
+     * @dev Same rule as orExpressions: reverts with ExpressionsOverlap when the two can be true together.
+     */
     function mergeExpressions(uint256 exprId1, uint256 exprId2) public returns (uint256 mergedExprId) {
-        Expression storage expr1 = _getExpression(exprId1);
-        Expression storage expr2 = _getExpression(exprId2);
-
-        uint256 totalConjunctions = expr1.conjunctions.length + expr2.conjunctions.length;
-
-        // Ensure the total number of conjunctions does not exceed MAX_CONJUNCTIONS
-        if (totalConjunctions > MAX_CONJUNCTIONS) {
-            revert ExpressionTooLarge();
-        }
-
-        uint256[][] memory mergedConjunctions = new uint256[][](totalConjunctions);
-
-        // Copy conjunctions from expr1
-        for (uint256 i = 0; i < expr1.conjunctions.length; i++) {
-            mergedConjunctions[i] = expr1.conjunctions[i];
-        }
-
-        // Copy conjunctions from expr2
-        for (uint256 i = 0; i < expr2.conjunctions.length; i++) {
-            mergedConjunctions[expr1.conjunctions.length + i] = expr2.conjunctions[i];
-        }
-
-        mergedExprId = _createExpression(mergedConjunctions);
+        mergedExprId = _exclusiveUnion(exprId1, exprId2);
     }
 
     /**
@@ -318,83 +300,7 @@ contract ExpressionContract {
      * @return intersectionId Intersection of expressions
      */
     function intersectExpressions(uint256 expr1Id, uint256 expr2Id) public returns (uint256 intersectionId) {
-        Expression storage expr1 = _getExpression(expr1Id);
-        Expression storage expr2 = _getExpression(expr2Id);
-
-        uint256[][] memory intersectionConj = new uint256[][](expr1.conjunctions.length * expr2.conjunctions.length);
-        uint256 intersectionCount = 0;
-
-        // For each pair of conjunctions, try to merge them
-        for (uint256 i = 0; i < expr1.conjunctions.length; i++) {
-            for (uint256 j = 0; j < expr2.conjunctions.length; j++) {
-                (uint256[] memory mergedConj, bool isValid) =
-                    mergeConjunctions(expr1.conjunctions[i], expr2.conjunctions[j]);
-                if (isValid) {
-                    intersectionConj[intersectionCount++] = mergedConj;
-                }
-            }
-        }
-
-        // Create intersection expression
-        uint256[][] memory finalIntersection = new uint256[][](intersectionCount);
-        for (uint256 i = 0; i < intersectionCount; i++) {
-            finalIntersection[i] = intersectionConj[i];
-        }
-        intersectionId = _createExpression(finalIntersection);
-    }
-
-    /**
-     * @notice Helper to merge two conjunctions, detecting contradictions
-     * @return merged The merged conjunction
-     * @return isValid False if conjunctions have contradicting literals
-     */
-    function mergeConjunctions(uint256[] memory conj1, uint256[] memory conj2)
-        private
-        pure
-        returns (uint256[] memory merged, bool isValid)
-    {
-        uint256[] memory temp = new uint256[](conj1.length + conj2.length);
-        uint256 count = 0;
-
-        // Copy first conjunction
-        for (uint256 i = 0; i < conj1.length; i++) {
-            temp[count++] = conj1[i];
-        }
-
-        // Add literals from second conjunction, checking for contradictions
-        for (uint256 i = 0; i < conj2.length; i++) {
-            uint256 lit2 = conj2[i];
-            uint256 var2 = lit2 & ((1 << 255) - 1);
-            bool isNegated2 = (lit2 & (1 << 255)) != 0;
-
-            // Check against all existing literals
-            bool isDuplicate = false;
-            for (uint256 j = 0; j < count; j++) {
-                uint256 lit1 = temp[j];
-                uint256 var1 = lit1 & ((1 << 255) - 1);
-                bool isNegated1 = (lit1 & (1 << 255)) != 0;
-
-                if (var1 == var2) {
-                    if (isNegated1 != isNegated2) {
-                        // Contradiction found
-                        return (new uint256[](0), false);
-                    }
-                    isDuplicate = true;
-                    break;
-                }
-            }
-
-            if (!isDuplicate) {
-                temp[count++] = lit2;
-            }
-        }
-
-        // Create final array of exact size
-        merged = new uint256[](count);
-        for (uint256 i = 0; i < count; i++) {
-            merged[i] = temp[i];
-        }
-        return (merged, true);
+        intersectionId = andExpressions(expr1Id, expr2Id);
     }
 
     /**
@@ -499,11 +405,11 @@ contract ExpressionContract {
         Expression storage expr1 = _getExpression(exprId1);
         Expression storage expr2 = _getExpression(exprId2);
 
-        // For each pair of conjunctions, check if they can be merged
+        // The expressions intersect when some pair of conjunctions can be true together
         for (uint256 i = 0; i < expr1.conjunctions.length; i++) {
+            uint256[] memory conj1 = expr1.conjunctions[i];
             for (uint256 j = 0; j < expr2.conjunctions.length; j++) {
-                (, bool isValid) = mergeConjunctions(expr1.conjunctions[i], expr2.conjunctions[j]);
-                if (isValid) {
+                if (!CanonicalFormLib.areConjunctionsExclusive(conj1, expr2.conjunctions[j])) {
                     return true; // Intersection exists
                 }
             }
@@ -570,22 +476,9 @@ contract ExpressionContract {
         }
     }
 
-    function getValueForVarId(uint256 varId, uint256[] memory variableIds, uint256[] memory variableValues)
-        internal
-        pure
-        returns (uint256)
-    {
-        for (uint256 i = 0; i < variableIds.length; i++) {
-            if (variableIds[i] == varId) {
-                return variableValues[i];
-            }
-        }
-        // If not found, decide on a default behavior or revert
-        return 0; // or revert if needed
-    }
-
     /**
      * @notice Evaluate a single conjunction of an expression
+     * @dev Reverts if a variable of the conjunction has no value, like the evaluation of a whole expression
      */
     function evaluateConjunction(
         uint256 expressionId,
@@ -596,31 +489,13 @@ contract ExpressionContract {
         Expression storage expr = _getExpression(expressionId);
         if (conjunctionIndex >= expr.conjunctions.length) revert ExpressionDoesNotExist(conjunctionIndex);
 
-        uint256[] memory conj = expr.conjunctions[conjunctionIndex];
-
-        // Evaluate the conjunction using arrays
-        uint256 result = SCALE; // assuming SCALE is defined
-        for (uint256 i = 0; i < conj.length; i++) {
-            uint256 lit = conj[i];
-            uint256 varId = lit & ((1 << 255) - 1);
-            bool isNegated = (lit & (1 << 255)) != 0;
-
-            uint256 value = getValueForVarId(varId, variableIds, variableValues);
-            if (isNegated) {
-                value = SCALE - value;
-            }
-
-            result = (result * value) / SCALE;
-            if (result == 0) {
-                break;
-            }
-        }
-
-        return result;
+        return ExpressionEvaluatorLib.evaluateConjunctionWithValues(
+            expr.conjunctions[conjunctionIndex], variableIds, variableValues
+        );
     }
 
     /**
-     * @notice Try to evaluate a range of conjunctions
+     * @notice Evaluate an expression: the sum of its conjunctions, exact because they are exclusive
      */
     function evaluateExpressionWithValues(
         uint256 expressionId,
@@ -632,10 +507,57 @@ contract ExpressionContract {
     }
 
     /**
+     * @notice OR of two expressions whose conjunctions are exclusive across the two
+     */
+    function _exclusiveUnion(uint256 exprId1, uint256 exprId2) private returns (uint256) {
+        Expression storage expr1 = _getExpression(exprId1);
+        Expression storage expr2 = _getExpression(exprId2);
+
+        uint256 count1 = expr1.conjunctions.length;
+        uint256 count2 = expr2.conjunctions.length;
+        if (count1 + count2 > MAX_CONJUNCTIONS) {
+            revert ExpressionTooLarge();
+        }
+
+        uint256[][] memory combined = new uint256[][](count1 + count2);
+        for (uint256 i = 0; i < count1; i++) {
+            combined[i] = expr1.conjunctions[i];
+        }
+        for (uint256 i = 0; i < count2; i++) {
+            combined[count1 + i] = expr2.conjunctions[i];
+        }
+
+        uint256[][] memory canonical = combined.canonicalizeExpression();
+
+        // A conjunction present in both shrinks the list; any other overlap shows up as a non-exclusive pair
+        if (canonical.length != count1 + count2) revert ExpressionsOverlap(exprId1, exprId2);
+        (bool overlaps,,) = canonical.findOverlappingConjunctions();
+        if (overlaps) revert ExpressionsOverlap(exprId1, exprId2);
+
+        return _storeExpression(canonical);
+    }
+
+    /**
      * @notice Internal helper to create expression in canonical form
+     * @dev Refuses any expression with two conjunctions that can be true together
      */
     function _createExpression(uint256[][] memory conjunctions) private returns (uint256) {
         uint256[][] memory canonical = conjunctions.canonicalizeExpression();
+
+        (bool overlaps, uint256 first, uint256 second) = canonical.findOverlappingConjunctions();
+        if (overlaps) revert ConjunctionsNotExclusive(first, second);
+
+        return _storeExpression(canonical);
+    }
+
+    /**
+     * @notice Stores a canonical expression with exclusive conjunctions, or returns the id it already has
+     */
+    function _storeExpression(uint256[][] memory canonical) private returns (uint256) {
+        if (canonical.length > MAX_CONJUNCTIONS) revert ExpressionTooLarge();
+        for (uint256 i = 0; i < canonical.length; i++) {
+            if (canonical[i].length > MAX_LITERALS) revert ExpressionTooLarge();
+        }
 
         bytes32 hash = canonical.computeExpressionHash();
         uint256 existingId = expressionHashes[hash];
@@ -651,6 +573,10 @@ contract ExpressionContract {
 
         emit ExpressionCreated(expressionId, hash);
         return expressionId;
+    }
+
+    function _requireVariable(uint256 variable) private pure {
+        if (variable == 0 || variable & NEGATION_BIT != 0) revert InvalidVariable(variable);
     }
 
     /**
