@@ -4,16 +4,27 @@ pragma solidity ^0.8.0;
 /**
  * @title CanonicalFormLib
  * @notice Library for converting expressions to canonical form and computing their hashes
- * @dev A canonical form ensures that equivalent expressions have identical representations
+ * @dev An expression is a list of conjunctions (clauses); a conjunction is a list of literals. A literal is a
+ *      variable id with bit 255 set when negated. In canonical form the literals of a conjunction are sorted by
+ *      (variable, sign) with no duplicates and no contradiction, and the conjunctions are sorted with no duplicates.
+ *      TRUE is one empty conjunction; FALSE is no conjunction at all.
  */
 library CanonicalFormLib {
-    error DuplicateLiteral(uint256 literal);
-    error ContradictoryLiterals(uint256 var1, uint256 var2);
+    uint256 private constant NEGATION_BIT = 1 << 255;
+    uint256 private constant VARIABLE_MASK = NEGATION_BIT - 1;
+
+    /**
+     * @notice Sort key of a literal: orders by variable first, then by sign
+     * @dev x and NOT x become neighbours, so one pass over the sorted literals finds every contradiction
+     */
+    function literalKey(uint256 literal) internal pure returns (uint256) {
+        return (literal << 1) | (literal >> 255);
+    }
 
     /**
      * @notice Sorts and deduplicates literals within a conjunction
-     * @dev Also detects contradictions (x AND NOT x)
-     * @param literals Array of literals to canonicalize
+     * @dev Also detects contradictions (x AND NOT x), wherever the two literals sit in the input
+     * @param literals Array of literals to canonicalize (sorted in place)
      * @return cleanLiterals Sorted array with no duplicates
      * @return isValid False if conjunction contains a contradiction
      */
@@ -26,7 +37,7 @@ library CanonicalFormLib {
             return (new uint256[](0), true);
         }
 
-        // Sort literals first
+        // Sort literals by (variable, sign)
         quickSortLiterals(literals, 0, int256(literals.length - 1));
 
         // Remove duplicates and check for contradictions
@@ -35,21 +46,17 @@ library CanonicalFormLib {
 
         for (uint256 readIndex = 0; readIndex < literals.length; readIndex++) {
             uint256 currentLiteral = literals[readIndex];
-            uint256 currentVar = currentLiteral & ((1 << 255) - 1);
-            bool currentIsNegated = (currentLiteral & (1 << 255)) != 0;
 
-            // Skip duplicates
-            if (readIndex > 0 && currentLiteral == literals[readIndex - 1]) {
-                continue;
-            }
-
-            // Check for contradiction with previous literal
             if (readIndex > 0) {
                 uint256 prevLiteral = literals[readIndex - 1];
-                uint256 prevVar = prevLiteral & ((1 << 255) - 1);
-                bool prevIsNegated = (prevLiteral & (1 << 255)) != 0;
 
-                if (currentVar == prevVar && currentIsNegated != prevIsNegated) {
+                // Skip duplicates
+                if (currentLiteral == prevLiteral) {
+                    continue;
+                }
+
+                // Same variable with the other sign: contradiction
+                if ((currentLiteral & VARIABLE_MASK) == (prevLiteral & VARIABLE_MASK)) {
                     return (new uint256[](0), false);
                 }
             }
@@ -57,17 +64,17 @@ library CanonicalFormLib {
             tempLiterals[writeIndex++] = currentLiteral;
         }
 
-        // Create final array of exact size
-        cleanLiterals = new uint256[](writeIndex);
-        for (uint256 i = 0; i < writeIndex; i++) {
-            cleanLiterals[i] = tempLiterals[i];
+        // Trim array to final size
+        assembly {
+            mstore(tempLiterals, writeIndex)
         }
 
-        return (cleanLiterals, true);
+        return (tempLiterals, true);
     }
 
     /**
      * @notice Puts an entire expression in canonical form
+     * @dev Contradictory conjunctions are dropped. An empty conjunction is kept: it is TRUE.
      * @param conjunctions Array of conjunctions to canonicalize
      * @return canonicalForm The expression in canonical form
      */
@@ -86,8 +93,8 @@ library CanonicalFormLib {
 
         for (uint256 i = 0; i < conjunctions.length; i++) {
             (uint256[] memory cleanConj, bool isValid) = canonicalizeConjunction(conjunctions[i]);
-            if (isValid && cleanConj.length > 0) {
-                // Skip contradictory and empty conjunctions
+            if (isValid) {
+                // Skip contradictory conjunctions only
                 validConjunctions[validCount++] = cleanConj;
             }
         }
@@ -117,38 +124,75 @@ library CanonicalFormLib {
     }
 
     /**
+     * @notice Whether two canonical conjunctions can never both be true
+     * @dev True exactly when some variable appears plain in one and negated in the other.
+     *      Both inputs must be sorted by (variable, sign), as canonicalizeConjunction leaves them.
+     */
+    function areConjunctionsExclusive(uint256[] memory conj1, uint256[] memory conj2) internal pure returns (bool) {
+        uint256 i = 0;
+        uint256 j = 0;
+        while (i < conj1.length && j < conj2.length) {
+            uint256 lit1 = conj1[i];
+            uint256 lit2 = conj2[j];
+            uint256 var1 = lit1 & VARIABLE_MASK;
+            uint256 var2 = lit2 & VARIABLE_MASK;
+            if (var1 == var2) {
+                if (lit1 != lit2) return true;
+                i++;
+                j++;
+            } else if (var1 < var2) {
+                i++;
+            } else {
+                j++;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @notice Finds two conjunctions of a canonical expression that can both be true
+     * @return found True if such a pair exists
+     * @return first Index of the first conjunction of the pair
+     * @return second Index of the second conjunction of the pair
+     */
+    function findOverlappingConjunctions(uint256[][] memory conjunctions)
+        internal
+        pure
+        returns (bool found, uint256 first, uint256 second)
+    {
+        for (uint256 i = 0; i < conjunctions.length; i++) {
+            for (uint256 j = i + 1; j < conjunctions.length; j++) {
+                if (!areConjunctionsExclusive(conjunctions[i], conjunctions[j])) {
+                    return (true, i, j);
+                }
+            }
+        }
+        return (false, 0, 0);
+    }
+
+    /**
      * @notice Compute hash of expression in canonical form
+     * @dev abi.encode keeps the array lengths, so two different expressions never share an encoding,
+     *      and the cost is linear in the size of the expression.
      * @param conjunctions Array of conjunctions in canonical form
      * @return Hash of the expression
      */
     function computeExpressionHash(uint256[][] memory conjunctions) internal pure returns (bytes32) {
         // Expression should already be in canonical form when this is called
-        bytes memory data;
-
-        // Serialize each conjunction
-        for (uint256 i = 0; i < conjunctions.length; i++) {
-            uint256[] memory conj = conjunctions[i];
-            for (uint256 j = 0; j < conj.length; j++) {
-                data = abi.encodePacked(data, conj[j]);
-            }
-            // Add separator between conjunctions
-            data = abi.encodePacked(data, bytes1(0x00));
-        }
-
-        return keccak256(data);
+        return keccak256(abi.encode(conjunctions));
     }
 
     // Sorting helper functions
     function quickSortLiterals(uint256[] memory arr, int256 left, int256 right) private pure {
         if (left >= right) return;
 
-        uint256 pivot = arr[uint256(left + (right - left) / 2)];
+        uint256 pivot = literalKey(arr[uint256(left + (right - left) / 2)]);
         int256 i = left;
         int256 j = right;
 
         while (i <= j) {
-            while (arr[uint256(i)] < pivot) i++;
-            while (arr[uint256(j)] > pivot) j--;
+            while (literalKey(arr[uint256(i)]) < pivot) i++;
+            while (literalKey(arr[uint256(j)]) > pivot) j--;
 
             if (i <= j) {
                 (arr[uint256(i)], arr[uint256(j)]) = (arr[uint256(j)], arr[uint256(i)]);
@@ -186,10 +230,12 @@ library CanonicalFormLib {
     function compareConjunctions(uint256[] memory conj1, uint256[] memory conj2) private pure returns (int256) {
         uint256 minLength = conj1.length < conj2.length ? conj1.length : conj2.length;
 
-        // Compare literals
+        // Compare literals in the same (variable, sign) order used inside a conjunction
         for (uint256 i = 0; i < minLength; i++) {
-            if (conj1[i] < conj2[i]) return -1;
-            if (conj1[i] > conj2[i]) return 1;
+            uint256 key1 = literalKey(conj1[i]);
+            uint256 key2 = literalKey(conj2[i]);
+            if (key1 < key2) return -1;
+            if (key1 > key2) return 1;
         }
 
         // If all common literals are equal, shorter conjunction comes first
